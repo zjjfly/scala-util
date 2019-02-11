@@ -1,4 +1,5 @@
-import scalariform.formatter.preferences._
+import sbt.Keys.scalaVersion
+import sbtbuildinfo.BuildInfoPlugin.autoImport.buildInfoPackage
 
 name := "wasted-util"
 
@@ -6,60 +7,28 @@ organization := "io.wasted"
 
 version := scala.io.Source.fromFile("version").mkString.trim
 
-scalaVersion := "2.11.8"
-
-crossScalaVersions := Seq("2.10.6", "2.11.8")
+scalaVersion := "2.12.4"
 
 scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions")
 
 libraryDependencies ++= Seq(
-  "com.twitter" %% "util-core" % "6.30.0",
-  "ch.qos.logback" % "logback-classic" % "1.1.2",
-  "com.typesafe" % "config" % "1.2.1",
-  "com.google.guava" % "guava" % "18.0",
-  "io.netty" % "netty-all" % "4.1.0.Final",
-  "org.javassist" % "javassist" % "3.18.2-GA",
-  "com.google.code.findbugs" % "jsr305" % "1.3.+",
+  "com.twitter" %% "util-core" % "18.8.0",
+  "ch.qos.logback" % "logback-classic" % "1.2.3",
+  "com.typesafe" % "config" % "1.3.2",
+  "com.google.guava" % "guava" % "19.0",
+  "io.netty" % "netty-all" % "4.1.28.Final",
+  "org.javassist" % "javassist" % "3.21.0-GA",
+  "com.google.code.findbugs" % "jsr305" % "2.0.1",
   "org.scala-lang" % "scala-reflect" % scalaVersion.value
 )
 
 // For testing
 libraryDependencies ++= Seq(
- "org.scalatest" %% "scalatest" % "2.2.2" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
 
-publishTo := Some("wasted.io/repo" at "http://repo.wasted.io/mvn")
+enablePlugins(BuildInfoPlugin)
 
-scalariformSettings
-
-ScalariformKeys.preferences := FormattingPreferences().setPreference(AlignParameters, true)
-
-sourceGenerators in Compile <+= buildInfo
-
-buildInfoSettings
-
-buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
+buildInfoKeys ++= Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
 
 buildInfoPackage := "io.wasted.util.build"
-
-net.virtualvoid.sbt.graph.Plugin.graphSettings
-
-site.settings
-
-site.includeScaladoc()
-
-ghpages.settings
-
-git.remoteRepo := "git@github.com:wasted/scala-util.git"
-
-resolvers ++= Seq(
-  "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
-  "wasted.io/repo" at "http://repo.wasted.io/mvn",
-  "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots/",
-  "Maven Repo" at "http://repo1.maven.org/maven2/",
-  "Typesafe Ivy Repo" at "http://repo.typesafe.com/typesafe/ivy-releases",
-  "Typesafe Maven Repo" at "http://repo.typesafe.com/typesafe/releases/",
-  "Java.net Maven2 Repository" at "http://download.java.net/maven/2/"
-)
-
-isSnapshot := true
