@@ -92,7 +92,7 @@ abstract class Wactor(maxQueueSize: Int = -1)(implicit ec: Executor = Wactor.ecF
 object Wactor extends Logger {
   private[util] lazy val ecForkJoin: Executor = new ForkJoinPool
   private[util] lazy val ecThreadPool: Executor = Executors.newCachedThreadPool
-  private[util]type Behavior = Any => Effect
+  private[util] type Behavior = Any => Effect
   private[util] sealed trait Effect extends (Behavior => Behavior)
 
   /* Effect which tells the actor to keep the current behavior. */

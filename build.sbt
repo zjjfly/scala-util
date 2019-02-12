@@ -9,7 +9,11 @@ version := scala.io.Source.fromFile("version").mkString.trim
 
 scalaVersion := "2.12.4"
 
-scalacOptions ++= Seq("-unchecked", "-deprecation", "-feature", "-language:postfixOps", "-language:implicitConversions")
+scalacOptions ++= Seq("-unchecked",
+                      "-deprecation",
+                      "-feature",
+                      "-language:postfixOps",
+                      "-language:implicitConversions")
 
 libraryDependencies ++= Seq(
   "com.twitter" %% "util-core" % "18.8.0",
@@ -32,3 +36,10 @@ enablePlugins(BuildInfoPlugin)
 buildInfoKeys ++= Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion)
 
 buildInfoPackage := "io.wasted.util.build"
+
+import scalariform.formatter.preferences._
+scalariformPreferences := scalariformPreferences.value
+  .setPreference(AlignParameters, true)
+  .setPreference(AlignSingleLineCaseStatements, true)
+  .setPreference(DoubleIndentConstructorArguments, true)
+  .setPreference(DanglingCloseParenthesis, Preserve)

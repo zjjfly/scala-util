@@ -14,7 +14,7 @@ object HostInformation {
     val decodedPath = java.net.URLDecoder.decode(path, "UTF-8")
     new java.io.File(decodedPath).isFile match {
       case true => Some(Hashing.hexFileDigest(decodedPath)(HexingAlgo("SHA1")))
-      case _ => None
+      case _    => None
     }
   }
 

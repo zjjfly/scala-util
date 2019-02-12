@@ -38,15 +38,15 @@ object Thruput {
  * @param engine Optional SSLEngine
  */
 class Thruput(
-  uri: URI,
-  auth: UUID,
-  sign: UUID,
-  from: Option[String] = None,
-  room: Option[String] = None,
-  val callback: (ByteBufHolder) => Any = (x) => x.release,
-  states: (Thruput.State.Value) => Any = (x) => x,
-  timeout: Int = 5,
-  engine: Option[SSLEngine] = None) extends Wactor(100000) {
+    uri:          URI,
+    auth:         UUID,
+    sign:         UUID,
+    from:         Option[String]               = None,
+    room:         Option[String]               = None,
+    val callback: (ByteBufHolder) => Any       = (x) => x.release,
+    states:       (Thruput.State.Value) => Any = (x) => x,
+    timeout:      Int                          = 5,
+    engine:       Option[SSLEngine]            = None) extends Wactor(100000) {
   TP =>
   override val loggerName = getClass.getCanonicalName + ":" + uri.toString + auth
   private def session = UUID.randomUUID
@@ -87,7 +87,7 @@ class Thruput(
     wsf.retain
     wsf match {
       case a: TextWebSocketFrame => debug("Sending: " + a.text())
-      case other => debug("Sending: " + other.getClass.getSimpleName)
+      case other                 => debug("Sending: " + other.getClass.getSimpleName)
     }
     val eventLoop = channel.eventLoop()
     eventLoop.inEventLoop match {
@@ -114,8 +114,8 @@ class Thruput(
 
             val body = (room, from) match {
               case (Some(uroom), Some(ufrom)) => """{"room":"%s","thruput":true,"from":"%s"}""".format(uroom, ufrom)
-              case (_, Some(ufrom)) => """{"from":"%s","thruput":true}""".format(ufrom)
-              case _ => """{"thruput":true}"""
+              case (_, Some(ufrom))           => """{"from":"%s","thruput":true}""".format(ufrom)
+              case _                          => """{"thruput":true}"""
             }
             writeToChannel(ch, new TextWebSocketFrame("""{"auth":"%s","sign":"%s","body":%s,"session":"%s"}""".format(
               auth.toString, io.wasted.util.Hashing.sign(sign.toString, body), body, session.toString)))
@@ -269,7 +269,7 @@ class ThruputResponseAdapter(uri: URI, client: Thruput) extends SimpleChannelInb
     if (!client.handshakeFuture.isDone) client.handshakeFuture.setFailure(cause)
     ExceptionHandler(ctx, cause) match {
       case Some(e) =>
-      case _ => client.reconnect()
+      case _       => client.reconnect()
     }
     ctx.close()
   }

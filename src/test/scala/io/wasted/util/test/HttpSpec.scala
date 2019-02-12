@@ -30,8 +30,8 @@ class HttpSpec extends WordSpec with ScalaFutures with AsyncAssertions with Befo
 
   "GET Request to http://wasted.io" should {
     "contain the phrase \"wasted\" somewhere" in {
-      val resp1: FullHttpResponse = Await.result(client1.get(new java.net.URI("http://wasted.io/")), 5.seconds)
-      assert(resp1.content.toString(CharsetUtil.UTF_8).contains("wasted"))
+      val resp1: FullHttpResponse = Await.result(client1.get(new java.net.URI("http://www.a9vg.com/")), 5.seconds)
+      assert(resp1.content.toString(CharsetUtil.UTF_8).contains("游戏"))
       resp1.content.release()
     }
   }

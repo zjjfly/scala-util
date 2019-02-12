@@ -47,9 +47,10 @@ final case class NettyStringChannel(out: Broker[String], in: Offer[String], priv
  * @param writeTimeout Channel Write Timeout
  * @param sslCtx Netty SSL Context
  */
-final case class NettyStringCodec(readTimeout: Option[Duration] = None,
-                                  writeTimeout: Option[Duration] = None,
-                                  sslCtx: Option[SslContext] = None) extends NettyCodec[String, NettyStringChannel] {
+final case class NettyStringCodec(
+    readTimeout:  Option[Duration]   = None,
+    writeTimeout: Option[Duration]   = None,
+    sslCtx:       Option[SslContext] = None) extends NettyCodec[String, NettyStringChannel] {
 
   def withTls(sslCtx: SslContext) = copy(sslCtx = Some(sslCtx))
   def withReadTimeout(timeout: Duration) = copy(readTimeout = Some(timeout))

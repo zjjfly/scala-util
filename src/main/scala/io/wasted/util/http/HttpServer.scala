@@ -48,19 +48,20 @@ object HttpServer {
  * @param customPipeline Setup extra handlers on the Netty Pipeline
  * @param handle Service to handle HttpRequests
  */
-final case class HttpServer[Req <: HttpMessage, Resp <: HttpResponse](codec: NettyHttpCodec[Req, Resp] = NettyHttpCodec[Req, Resp](),
-                                                                      httpValidateHeaders: Boolean = true,
-                                                                      tcpConnectTimeout: Duration = 5.seconds,
-                                                                      tcpKeepAlive: Boolean = false,
-                                                                      reuseAddr: Boolean = true,
-                                                                      tcpNoDelay: Boolean = true,
-                                                                      soLinger: Int = 0,
-                                                                      sendAllocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT,
-                                                                      recvAllocator: RecvByteBufAllocator = new AdaptiveRecvByteBufAllocator,
-                                                                      parentLoop: EventLoopGroup = Netty.eventLoop,
-                                                                      childLoop: EventLoopGroup = Netty.eventLoop,
-                                                                      customPipeline: Channel => Unit = p => (),
-                                                                      handle: (Channel, Future[Req]) => Future[Resp] = HttpServer.defaultHandler)
+final case class HttpServer[Req <: HttpMessage, Resp <: HttpResponse](
+    codec:               NettyHttpCodec[Req, Resp]              = NettyHttpCodec[Req, Resp](),
+    httpValidateHeaders: Boolean                                = true,
+    tcpConnectTimeout:   Duration                               = 5.seconds,
+    tcpKeepAlive:        Boolean                                = false,
+    reuseAddr:           Boolean                                = true,
+    tcpNoDelay:          Boolean                                = true,
+    soLinger:            Int                                    = 0,
+    sendAllocator:       ByteBufAllocator                       = PooledByteBufAllocator.DEFAULT,
+    recvAllocator:       RecvByteBufAllocator                   = new AdaptiveRecvByteBufAllocator,
+    parentLoop:          EventLoopGroup                         = Netty.eventLoop,
+    childLoop:           EventLoopGroup                         = Netty.eventLoop,
+    customPipeline:      Channel => Unit                        = p => (),
+    handle:              (Channel, Future[Req]) => Future[Resp] = HttpServer.defaultHandler)
   extends NettyServerBuilder[HttpServer[Req, Resp], Req, Resp] with Logger {
 
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)

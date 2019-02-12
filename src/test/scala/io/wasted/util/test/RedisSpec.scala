@@ -192,7 +192,7 @@ class RedisSpec extends WordSpec with Logger {
     }
 
     "sMembers" in {
-      assert(Await.result(client.sMembers("setInter"), 1.second) == List("member1", "member2"), "wrong members inter'd")
+      assert(Await.result(client.sMembers("setInter"), 1.second) == List("member2", "member1"), "wrong members inter'd")
     }
 
     "sMove" in {
@@ -519,7 +519,7 @@ class RedisSpec extends WordSpec with Logger {
         throw new IllegalStateException("This should not happen! Over limit")
       } catch {
         case t: OverRateLimitException => // yay sucess
-        case t: Throwable => throw t
+        case t: Throwable              => throw t
       }
       Thread.sleep(5000)
       Await.result(limiter("test2"))

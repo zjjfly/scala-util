@@ -47,9 +47,10 @@ final case class NettyByteArrayChannel(out: Broker[ByteBuf], in: Offer[ByteBuf],
  * @param writeTimeout Channel Write Timeout
  * @param sslCtx Netty SSL Context
  */
-final case class NettyByteArrayCodec(readTimeout: Option[Duration] = None,
-                                     writeTimeout: Option[Duration] = None,
-                                     sslCtx: Option[SslContext] = None) extends NettyCodec[ByteBuf, NettyByteArrayChannel] {
+final case class NettyByteArrayCodec(
+    readTimeout:  Option[Duration]   = None,
+    writeTimeout: Option[Duration]   = None,
+    sslCtx:       Option[SslContext] = None) extends NettyCodec[ByteBuf, NettyByteArrayChannel] {
 
   def withTls(sslCtx: SslContext) = copy(sslCtx = Some(sslCtx))
   def withReadTimeout(timeout: Duration) = copy(readTimeout = Some(timeout))

@@ -22,19 +22,20 @@ import io.netty.channel._
  * @param retries On connection or timeouts, how often should we retry? Defaults to 0
  * @param eventLoop Netty Event-Loop
  */
-final case class RedisClient(codec: NettyRedisCodec = NettyRedisCodec(),
-                             remote: List[InetSocketAddress] = List.empty,
-                             hostConnectionLimit: Int = 1,
-                             globalTimeout: Option[Duration] = None,
-                             tcpConnectTimeout: Option[Duration] = None,
-                             connectTimeout: Option[Duration] = None,
-                             requestTimeout: Option[Duration] = None,
-                             tcpKeepAlive: Boolean = false,
-                             reuseAddr: Boolean = true,
-                             tcpNoDelay: Boolean = true,
-                             soLinger: Int = 0,
-                             retries: Int = 0,
-                             eventLoop: EventLoopGroup = Netty.eventLoop)
+final case class RedisClient(
+    codec:               NettyRedisCodec         = NettyRedisCodec(),
+    remote:              List[InetSocketAddress] = List.empty,
+    hostConnectionLimit: Int                     = 1,
+    globalTimeout:       Option[Duration]        = None,
+    tcpConnectTimeout:   Option[Duration]        = None,
+    connectTimeout:      Option[Duration]        = None,
+    requestTimeout:      Option[Duration]        = None,
+    tcpKeepAlive:        Boolean                 = false,
+    reuseAddr:           Boolean                 = true,
+    tcpNoDelay:          Boolean                 = true,
+    soLinger:            Int                     = 0,
+    retries:             Int                     = 0,
+    eventLoop:           EventLoopGroup          = Netty.eventLoop)
   extends NettyClientBuilder[java.net.URI, NettyRedisChannel] {
 
   def withSpecifics(codec: NettyRedisCodec) = copy(codec = codec)

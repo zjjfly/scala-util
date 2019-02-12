@@ -9,12 +9,13 @@ import io.netty.handler.codec.http.websocketx._
 import io.netty.util.ReferenceCountUtil
 
 @Sharable
-case class WebSocketHandler[Req <: HttpRequest](corsOrigin: String = "*",
-                                                handshakerHeaders: Map[String, String] = Map.empty,
-                                                connect: (Channel) => Unit = (p) => (),
-                                                disconnect: (Channel) => Unit = (p) => (),
-                                                httpHandler: Option[(Channel, Future[Req]) => Future[HttpResponse]] = None,
-                                                handle: Option[(Channel, Future[WebSocketFrame]) => Option[Future[WebSocketFrame]]] = None)
+case class WebSocketHandler[Req <: HttpRequest](
+    corsOrigin:        String                                                                      = "*",
+    handshakerHeaders: Map[String, String]                                                         = Map.empty,
+    connect:           (Channel) => Unit                                                           = (p) => (),
+    disconnect:        (Channel) => Unit                                                           = (p) => (),
+    httpHandler:       Option[(Channel, Future[Req]) => Future[HttpResponse]]                      = None,
+    handle:            Option[(Channel, Future[WebSocketFrame]) => Option[Future[WebSocketFrame]]] = None)
   extends SimpleChannelInboundHandler[WebSocketFrame] { channelHandler =>
 
   def withHandshakerHeaders(handshakerHeaders: Map[String, String]) = copy(handshakerHeaders = handshakerHeaders)

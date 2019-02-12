@@ -12,11 +12,11 @@ import io.netty.util.CharsetUtil
  */
 class HttpResponder(token: String, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) {
   def apply(
-    status: HttpResponseStatus,
-    body: Option[String] = None,
-    mime: Option[String] = None,
-    keepAlive: Boolean = true,
-    headers: Map[String, String] = Map()): FullHttpResponse = {
+    status:    HttpResponseStatus,
+    body:      Option[String]      = None,
+    mime:      Option[String]      = None,
+    keepAlive: Boolean             = true,
+    headers:   Map[String, String] = Map()): FullHttpResponse = {
     val res = body.map { body =>
       val bytes = body.getBytes(CharsetUtil.UTF_8)
       val content = allocator.ioBuffer(bytes.length, bytes.length)

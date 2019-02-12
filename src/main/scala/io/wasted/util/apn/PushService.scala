@@ -154,18 +154,18 @@ class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(i
       val errorCode = buf.getByte(1).toInt
       val id = buf.getInt(2)
       errorCode match {
-        case 0 => // "No errors encountered"
-        case 1 => error("Processing error on %s", id)
-        case 2 => error("Missing device token on %s", id)
-        case 3 => error("Missing topic on %s", id)
-        case 4 => error("Missing payload on %s", id)
-        case 5 => error("Invalid token size on %s", id)
-        case 6 => error("Invalid topic size on %s", id)
-        case 7 => error("Invalid payload size on %s", id)
-        case 8 => error("Invalid token on %s", id)
-        case 10 => info("Shutdown on %s", id)
+        case 0   => // "No errors encountered"
+        case 1   => error("Processing error on %s", id)
+        case 2   => error("Missing device token on %s", id)
+        case 3   => error("Missing topic on %s", id)
+        case 4   => error("Missing payload on %s", id)
+        case 5   => error("Invalid token size on %s", id)
+        case 6   => error("Invalid topic size on %s", id)
+        case 7   => error("Invalid payload size on %s", id)
+        case 8   => error("Invalid token on %s", id)
+        case 10  => info("Shutdown on %s", id)
         case 255 => debug("None (unknown) on %s", id)
-        case x => debug("Unknown error %s on %s", x, id)
+        case x   => debug("Unknown error %s on %s", x, id)
       }
     }
   }
@@ -182,7 +182,7 @@ class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(i
   override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
     http.ExceptionHandler(ctx, cause) match {
       case Some(e) => e.printStackTrace()
-      case _ =>
+      case _       =>
     }
     ctx.close()
   }

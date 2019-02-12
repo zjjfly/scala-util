@@ -3,11 +3,11 @@ package http
 
 import com.twitter.conversions.storage._
 import com.twitter.util._
-import io.netty.channel.{Channel, ChannelHandlerContext, SimpleChannelInboundHandler}
+import io.netty.channel.{ Channel, ChannelHandlerContext, SimpleChannelInboundHandler }
 import io.netty.handler.codec.http._
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
-import io.netty.handler.ssl.{SslContext, SslContextBuilder}
-import io.netty.handler.timeout.{ReadTimeoutHandler, WriteTimeoutHandler}
+import io.netty.handler.ssl.{ SslContext, SslContextBuilder }
+import io.netty.handler.timeout.{ ReadTimeoutHandler, WriteTimeoutHandler }
 import io.netty.util.ReferenceCountUtil
 
 /**
@@ -29,19 +29,20 @@ import io.netty.util.ReferenceCountUtil
  * @param writeTimeout Channel Write Timeout
  * @param sslCtx Netty SSL Context
  */
-final case class NettyHttpCodec[Req <: HttpMessage, Resp <: HttpObject](compressionLevel: Int = -1,
-                                                                        decompression: Boolean = true,
-                                                                        keepAlive: Boolean = false,
-                                                                        chunked: Boolean = false,
-                                                                        chunking: Boolean = true,
-                                                                        maxChunkSize: StorageUnit = 5.megabytes,
-                                                                        maxRequestSize: StorageUnit = 5.megabytes,
-                                                                        maxResponseSize: StorageUnit = 5.megabytes,
-                                                                        maxInitialLineLength: StorageUnit = 4096.bytes,
-                                                                        maxHeaderSize: StorageUnit = 8192.bytes,
-                                                                        readTimeout: Option[Duration] = None,
-                                                                        writeTimeout: Option[Duration] = None,
-                                                                        sslCtx: Option[SslContext] = None) extends NettyCodec[Req, Resp] {
+final case class NettyHttpCodec[Req <: HttpMessage, Resp <: HttpObject](
+    compressionLevel:     Int                = -1,
+    decompression:        Boolean            = true,
+    keepAlive:            Boolean            = false,
+    chunked:              Boolean            = false,
+    chunking:             Boolean            = true,
+    maxChunkSize:         StorageUnit        = 5.megabytes,
+    maxRequestSize:       StorageUnit        = 5.megabytes,
+    maxResponseSize:      StorageUnit        = 5.megabytes,
+    maxInitialLineLength: StorageUnit        = 4096.bytes,
+    maxHeaderSize:        StorageUnit        = 8192.bytes,
+    readTimeout:          Option[Duration]   = None,
+    writeTimeout:         Option[Duration]   = None,
+    sslCtx:               Option[SslContext] = None) extends NettyCodec[Req, Resp] {
 
   def withChunking(chunking: Boolean, chunked: Boolean = false, maxChunkSize: StorageUnit = 5.megabytes) =
     copy[Req, Resp](chunking = chunking, chunked = chunked, maxChunkSize = maxChunkSize)

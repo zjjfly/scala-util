@@ -23,21 +23,22 @@ import io.netty.channel._
  * @param eventLoop Netty Event-Loop
  * @param pipeline Setup extra handlers on the Netty Pipeline
  */
-case class NettyTcpClient[Req, Resp](codec: NettyCodec[Req, Resp],
-                                     remote: List[InetSocketAddress] = List.empty,
-                                     hostConnectionLimit: Int = 1,
-                                     hostConnectionCoreSize: Int = 0,
-                                     globalTimeout: Option[Duration] = None,
-                                     tcpConnectTimeout: Option[Duration] = None,
-                                     connectTimeout: Option[Duration] = None,
-                                     requestTimeout: Option[Duration] = None,
-                                     tcpKeepAlive: Boolean = false,
-                                     reuseAddr: Boolean = true,
-                                     tcpNoDelay: Boolean = true,
-                                     soLinger: Int = 0,
-                                     retries: Int = 0,
-                                     eventLoop: EventLoopGroup = Netty.eventLoop,
-                                     pipeline: Channel => Unit = p => ()) extends NettyClientBuilder[Req, Resp] {
+case class NettyTcpClient[Req, Resp](
+    codec:                  NettyCodec[Req, Resp],
+    remote:                 List[InetSocketAddress] = List.empty,
+    hostConnectionLimit:    Int                     = 1,
+    hostConnectionCoreSize: Int                     = 0,
+    globalTimeout:          Option[Duration]        = None,
+    tcpConnectTimeout:      Option[Duration]        = None,
+    connectTimeout:         Option[Duration]        = None,
+    requestTimeout:         Option[Duration]        = None,
+    tcpKeepAlive:           Boolean                 = false,
+    reuseAddr:              Boolean                 = true,
+    tcpNoDelay:             Boolean                 = true,
+    soLinger:               Int                     = 0,
+    retries:                Int                     = 0,
+    eventLoop:              EventLoopGroup          = Netty.eventLoop,
+    pipeline:               Channel => Unit         = p => ()) extends NettyClientBuilder[Req, Resp] {
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)
   def withTcpNoDelay(tcpNoDelay: Boolean) = copy[Req, Resp](tcpNoDelay = tcpNoDelay)
   def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)

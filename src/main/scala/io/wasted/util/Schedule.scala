@@ -45,7 +45,7 @@ object Schedule extends Logger {
   def apply(func: () => Any, initialDelay: Duration, delay: Option[Duration] = None)(implicit timer: WheelTimer): Action =
     delay match {
       case Some(d) => apply(func, initialDelay, d)
-      case None => new Action(Some(timer.newTimeout(task(func), initialDelay.length, initialDelay.unit)))
+      case None    => new Action(Some(timer.newTimeout(task(func), initialDelay.length, initialDelay.unit)))
     }
 
   /**

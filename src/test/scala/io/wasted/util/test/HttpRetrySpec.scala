@@ -8,11 +8,12 @@ import com.twitter.util.{ Duration, Future }
 import io.netty.handler.codec.http.{ FullHttpRequest, FullHttpResponse, HttpResponse, HttpResponseStatus }
 import io.wasted.util.Logger
 import io.wasted.util.http._
+import org.scalatest.Matchers.convertToAnyShouldWrapper
 import org.scalatest._
 import org.scalatest.concurrent._
 import org.scalatest.time.Span
 
-class HttpRetrySpec extends FunSuite with ShouldMatchers with AsyncAssertions with BeforeAndAfter with Logger {
+class HttpRetrySpec extends FunSuite with Matchers with AsyncAssertions with BeforeAndAfter with Logger {
 
   val responder = new HttpResponder("wasted-http")
   val retries = 2
@@ -61,7 +62,7 @@ class HttpRetrySpec extends FunSuite with ShouldMatchers with AsyncAssertions wi
       .withGlobalTimeout(Duration(100, TimeUnit.MILLISECONDS))
       .get(new java.net.URI("http://localhost:8887/sleep")).map { resp =>
         w {
-          resp.status().code() should equal(200)
+          (resp.status().code()) should be(200)
         }
         resp.release()
         w.dismiss()

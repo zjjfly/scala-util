@@ -32,10 +32,11 @@ object LruMap {
  * @param expire Function to be called on expired objects
  * @param builderConf Function to extend the CacheBuilder
  */
-class LruMap[K, V](val maxSize: Int,
-                   load: Option[(K) => V],
-                   expire: Option[(K, V) => Any],
-                   builderConf: Option[CacheBuilder[AnyRef, AnyRef] => CacheBuilder[AnyRef, AnyRef]] = None) { lru =>
+class LruMap[K, V](
+    val maxSize: Int,
+    load:        Option[(K) => V],
+    expire:      Option[(K, V) => Any],
+    builderConf: Option[CacheBuilder[AnyRef, AnyRef] => CacheBuilder[AnyRef, AnyRef]] = None) { lru =>
   private[this] val loader: Option[CacheLoader[KeyHolder[K], ValueHolder[V]]] = lru.load.map { loadFunc =>
     new CacheLoader[KeyHolder[K], ValueHolder[V]] {
       def load(key: KeyHolder[K]): ValueHolder[V] = ValueHolder(loadFunc(key.key))
@@ -57,9 +58,9 @@ class LruMap[K, V](val maxSize: Int,
     builderConf.map(_(builder))
     (loader, removal) match {
       case (Some(loaderO), Some(removalO)) => builder.removalListener(removalO).build(loaderO)
-      case (Some(loaderO), None) => builder.build(loaderO)
-      case (None, Some(removalO)) => builder.removalListener(removalO).build()
-      case _ => builder.build()
+      case (Some(loaderO), None)           => builder.build(loaderO)
+      case (None, Some(removalO))          => builder.removalListener(removalO).build()
+      case _                               => builder.build()
     }
   }
 

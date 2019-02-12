@@ -62,19 +62,20 @@ final case class NettyWebSocketChannel(out: Broker[WebSocketFrame], in: Offer[We
  * @param writeTimeout Channel Write Timeout
  * @param sslCtx Netty SSL Context
  */
-final case class NettyWebSocketCodec(compressionLevel: Int = -1,
-                                     subprotocols: String = null,
-                                     allowExtensions: Boolean = true,
-                                     decompression: Boolean = true,
-                                     keepAlive: Boolean = false,
-                                     maxChunkSize: StorageUnit = 5.megabytes,
-                                     maxRequestSize: StorageUnit = 5.megabytes,
-                                     maxResponseSize: StorageUnit = 5.megabytes,
-                                     maxInitialLineLength: StorageUnit = 4096.bytes,
-                                     maxHeaderSize: StorageUnit = 8192.bytes,
-                                     readTimeout: Option[Duration] = None,
-                                     writeTimeout: Option[Duration] = None,
-                                     sslCtx: Option[SslContext] = None)
+final case class NettyWebSocketCodec(
+    compressionLevel:     Int                = -1,
+    subprotocols:         String             = null,
+    allowExtensions:      Boolean            = true,
+    decompression:        Boolean            = true,
+    keepAlive:            Boolean            = false,
+    maxChunkSize:         StorageUnit        = 5.megabytes,
+    maxRequestSize:       StorageUnit        = 5.megabytes,
+    maxResponseSize:      StorageUnit        = 5.megabytes,
+    maxInitialLineLength: StorageUnit        = 4096.bytes,
+    maxHeaderSize:        StorageUnit        = 8192.bytes,
+    readTimeout:          Option[Duration]   = None,
+    writeTimeout:         Option[Duration]   = None,
+    sslCtx:               Option[SslContext] = None)
   extends NettyCodec[java.net.URI, NettyWebSocketChannel] {
 
   def withCompression(compressionLevel: Int) = copy(compressionLevel = compressionLevel)

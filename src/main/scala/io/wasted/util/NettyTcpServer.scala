@@ -26,18 +26,19 @@ object NettyTcpServer {
  * @param pipeline Setup extra handlers on the Netty Pipeline
  * @param handle Service to handle HttpRequests
  */
-case class NettyTcpServer[Req, Resp](codec: NettyCodec[Req, Resp],
-                                     tcpConnectTimeout: Duration = 5.seconds,
-                                     tcpKeepAlive: Boolean = false,
-                                     reuseAddr: Boolean = true,
-                                     tcpNoDelay: Boolean = true,
-                                     soLinger: Int = 0,
-                                     sendAllocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT,
-                                     recvAllocator: RecvByteBufAllocator = new AdaptiveRecvByteBufAllocator,
-                                     parentLoop: EventLoopGroup = Netty.eventLoop,
-                                     childLoop: EventLoopGroup = Netty.eventLoop,
-                                     pipeline: Channel => Unit = p => (),
-                                     handle: (Channel, Future[Req]) => Future[Resp] = NettyTcpServer.defaultHandler)
+case class NettyTcpServer[Req, Resp](
+    codec:             NettyCodec[Req, Resp],
+    tcpConnectTimeout: Duration                               = 5.seconds,
+    tcpKeepAlive:      Boolean                                = false,
+    reuseAddr:         Boolean                                = true,
+    tcpNoDelay:        Boolean                                = true,
+    soLinger:          Int                                    = 0,
+    sendAllocator:     ByteBufAllocator                       = PooledByteBufAllocator.DEFAULT,
+    recvAllocator:     RecvByteBufAllocator                   = new AdaptiveRecvByteBufAllocator,
+    parentLoop:        EventLoopGroup                         = Netty.eventLoop,
+    childLoop:         EventLoopGroup                         = Netty.eventLoop,
+    pipeline:          Channel => Unit                        = p => (),
+    handle:            (Channel, Future[Req]) => Future[Resp] = NettyTcpServer.defaultHandler)
   extends NettyServerBuilder[NettyTcpServer[Req, Resp], Req, Resp] {
 
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)
