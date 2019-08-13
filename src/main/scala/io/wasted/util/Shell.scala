@@ -12,6 +12,7 @@ case class CWD(file: File)
  * Companion for the current working directory
  */
 object CWD {
+
   /**
    * Get a CWD for the given string path
    * @param path String path
@@ -42,7 +43,8 @@ object Shell {
    * @param cwd Current Working Directory
    * @return Shell Operation
    */
-  def run(cmd: String)(implicit cwd: CWD): ShellOperation = run(cmd :: Nil, dummyLineFunc)
+  def run(cmd: String)(implicit cwd: CWD): ShellOperation =
+    run(cmd :: Nil, dummyLineFunc)
 
   /**
    * Run the given cmd with params
@@ -51,7 +53,8 @@ object Shell {
    * @param cwd Current Working Directory
    * @return Shell Operation
    */
-  def run(cmd: String, params: String*)(implicit cwd: CWD): ShellOperation = run(Seq(cmd) ++ params, dummyLineFunc)
+  def run(cmd: String, params: String*)(implicit cwd: CWD): ShellOperation =
+    run(Seq(cmd) ++ params, dummyLineFunc)
 
   /**
    * Run the given cmd with a Line-Function
@@ -60,10 +63,13 @@ object Shell {
    * @param cwd Current Working Directory
    * @return Shell Operation
    */
-  def run(cmds: Seq[String], lineFunc: (String) => Any = dummyLineFunc)(implicit cwd: CWD): ShellOperation = {
+  def run(cmds: Seq[String], lineFunc: (String) => Any = dummyLineFunc)(
+    implicit
+    cwd: CWD): ShellOperation = {
     var output = Seq[String]()
     val process = Runtime.getRuntime.exec(cmds.toArray, null, cwd.file)
-    val resultBuffer = new BufferedReader(new InputStreamReader(process.getInputStream))
+    val resultBuffer = new BufferedReader(
+      new InputStreamReader(process.getInputStream))
 
     // Parse the output from rsync line-based and send it to the actor
     var line: String = null

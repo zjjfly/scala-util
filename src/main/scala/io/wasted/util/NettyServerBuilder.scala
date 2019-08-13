@@ -31,16 +31,21 @@ trait NettyServerBuilder[T, Req, Resp] extends Logger { self: T =>
         pipeline(ch)
       }
     }
-    val bs = srv.group(parentLoop, childLoop)
+    val bs = srv
+      .group(parentLoop, childLoop)
       .channel(classOf[NioServerSocketChannel])
       .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, tcpNoDelay)
       .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, tcpKeepAlive)
       .option[java.lang.Boolean](ChannelOption.SO_REUSEADDR, reuseAddr)
       .option[java.lang.Integer](ChannelOption.SO_LINGER, soLinger)
-      .option[java.lang.Integer](ChannelOption.CONNECT_TIMEOUT_MILLIS, tcpConnectTimeout.inMillis.toInt)
+      .option[java.lang.Integer](
+        ChannelOption.CONNECT_TIMEOUT_MILLIS,
+        tcpConnectTimeout.inMillis.toInt)
       .childHandler(pipelineFactory)
     bs.childOption[ByteBufAllocator](ChannelOption.ALLOCATOR, sendAllocator)
-    bs.childOption[RecvByteBufAllocator](ChannelOption.RCVBUF_ALLOCATOR, recvAllocator)
+    bs.childOption[RecvByteBufAllocator](
+      ChannelOption.RCVBUF_ALLOCATOR,
+      recvAllocator)
     bs
   }
 
@@ -68,7 +73,10 @@ trait NettyServerBuilder[T, Req, Resp] extends Logger { self: T =>
       cf.channel().close()
       cf.channel().closeFuture().await()
       listeners = listeners - addr
-      info("Removed listener on %s:%s", addr.getAddress.getHostAddress, addr.getPort)
+      info(
+        "Removed listener on %s:%s",
+        addr.getAddress.getHostAddress,
+        addr.getPort)
     }
     self
   }

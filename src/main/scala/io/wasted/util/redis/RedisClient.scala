@@ -41,23 +41,32 @@ final case class RedisClient(
   def withSpecifics(codec: NettyRedisCodec) = copy(codec = codec)
   def withSoLinger(soLinger: Int) = copy(soLinger = soLinger)
   def withTcpNoDelay(tcpNoDelay: Boolean) = copy(tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy(tcpKeepAlive = tcpKeepAlive)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy(tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy(reuseAddr = reuseAddr)
-  def withGlobalTimeout(globalTimeout: Duration) = copy(globalTimeout = Some(globalTimeout))
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy(tcpConnectTimeout = Some(tcpConnectTimeout))
-  def withConnectTimeout(connectTimeout: Duration) = copy(connectTimeout = Some(connectTimeout))
-  def withRequestTimeout(requestTimeout: Duration) = copy(requestTimeout = Some(requestTimeout))
+  def withGlobalTimeout(globalTimeout: Duration) =
+    copy(globalTimeout = Some(globalTimeout))
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy(tcpConnectTimeout = Some(tcpConnectTimeout))
+  def withConnectTimeout(connectTimeout: Duration) =
+    copy(connectTimeout = Some(connectTimeout))
+  def withRequestTimeout(requestTimeout: Duration) =
+    copy(requestTimeout = Some(requestTimeout))
   def withHostConnectionLimit(limit: Int) = copy(hostConnectionLimit = limit)
   def withEventLoop(eventLoop: EventLoopGroup) = copy(eventLoop = eventLoop)
-  def connectTo(host: String, port: Int) = copy(remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
+  def connectTo(host: String, port: Int) =
+    copy(
+      remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
   def connectTo(hosts: List[InetSocketAddress]) = copy(remote = hosts)
 
-  protected def getPort(url: java.net.URI): Int = if (url.getPort > 0) url.getPort else 6379
+  protected def getPort(url: java.net.URI): Int =
+    if (url.getPort > 0) url.getPort else 6379
 
   private[redis] def connect(): Future[NettyRedisChannel] = {
     val rand = scala.util.Random.nextInt(remote.length)
     val host = remote(rand)
-    val uri = new java.net.URI("redis://" + host.getHostString + ":" + host.getPort)
+    val uri =
+      new java.net.URI("redis://" + host.getHostString + ":" + host.getPort)
     write(uri, uri)
   }
 

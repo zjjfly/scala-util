@@ -30,7 +30,8 @@ class InetPrefixSpec extends WordSpec {
 
   val ipv6first = InetAddress.getByName("2013:4ce8::")
   val ipv6network = InetPrefix(ipv6first, 32)
-  val ipv6last = InetAddress.getByName("2013:4ce8:ffff:ffff:ffff:ffff:ffff:ffff")
+  val ipv6last =
+    InetAddress.getByName("2013:4ce8:ffff:ffff:ffff:ffff:ffff:ffff")
   val ipv6invalid1 = InetAddress.getByName("2015:1234::")
   val ipv6invalid2 = InetAddress.getByName("aaaa:bbb::")
 
@@ -63,4 +64,3 @@ class InetPrefixSpec extends WordSpec {
     }
   }
 }
-

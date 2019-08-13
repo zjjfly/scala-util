@@ -28,14 +28,16 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a Long
    */
-  def getBytes(name: String, fallback: Long): Long = getBytes(name) getOrElse fallback
+  def getBytes(name: String, fallback: Long): Long =
+    getBytes(name) getOrElse fallback
 
   /**
    * Gets the Duration from Config
    * @param name Config directive
    * @return Option for a Duration
    */
-  def getDuration(name: String): Option[Duration] = Tryo(conf.getDuration(name, TimeUnit.MILLISECONDS).millis)
+  def getDuration(name: String): Option[Duration] =
+    Tryo(conf.getDuration(name, TimeUnit.MILLISECONDS).millis)
 
   /**
    * Gets the Duration from Config and uses a fallback
@@ -43,7 +45,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a Duration
    */
-  def getDuration(name: String, fallback: Duration): Duration = getDuration(name) getOrElse fallback
+  def getDuration(name: String, fallback: Duration): Duration =
+    getDuration(name) getOrElse fallback
 
   /**
    * Gets the Int from Config
@@ -73,7 +76,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a Double
    */
-  def getDouble(name: String, fallback: Double): Double = getDouble(name) getOrElse fallback
+  def getDouble(name: String, fallback: Double): Double =
+    getDouble(name) getOrElse fallback
 
   /**
    * Gets the Boolean from Config
@@ -88,7 +92,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a Bool
    */
-  def getBool(name: String, fallback: Boolean): Boolean = getBool(name) getOrElse fallback
+  def getBool(name: String, fallback: Boolean): Boolean =
+    getBool(name) getOrElse fallback
 
   /**
    * Gets the String from Config
@@ -103,7 +108,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a String
    */
-  def get(name: String, fallback: String): String = getString(name) getOrElse fallback
+  def get(name: String, fallback: String): String =
+    getString(name) getOrElse fallback
 
   /**
    * Gets the String from Config
@@ -118,7 +124,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Option for a String
    */
-  def getString(name: String, fallback: String): String = getString(name) getOrElse fallback
+  def getString(name: String, fallback: String): String =
+    getString(name) getOrElse fallback
 
   /**
    * Get a list of Strings out of your configuration.
@@ -130,10 +137,11 @@ object Config {
    * @param name Name of the configuration directive
    * @return Seq of Strings
    */
-  def getStringList(name: String): Option[Seq[String]] = Tryo(conf.getStringList(name).asScala.toList) match {
-    case Some(l: List[String] @unchecked) if l.nonEmpty => Some(l)
-    case _ => None
-  }
+  def getStringList(name: String): Option[Seq[String]] =
+    Tryo(conf.getStringList(name).asScala.toList) match {
+      case Some(l: List[String] @unchecked) if l.nonEmpty => Some(l)
+      case _ => None
+    }
 
   /**
    * Get a list of Strings out of your configuration.
@@ -146,7 +154,8 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Seq of Strings
    */
-  def getStringList(name: String, fallback: Seq[String]): Seq[String] = getStringList(name) getOrElse fallback
+  def getStringList(name: String, fallback: Seq[String]): Seq[String] =
+    getStringList(name) getOrElse fallback
 
   /**
    * Get a list of InetSocketAddresses back where you configured multiple IPs in your configuration.
@@ -174,7 +183,9 @@ object Config {
    * @param fallback Fallback value if nothing is found
    * @return Seq of InetSocketAddresses to be used
    */
-  def getInetAddrList(name: String, fallback: Seq[String]): Seq[InetSocketAddress] =
-    getInetAddrList(name) getOrElse fallback.flatMap(InetPrefix.stringToInetAddr)
+  def getInetAddrList(
+    name:     String,
+    fallback: Seq[String]): Seq[InetSocketAddress] =
+    getInetAddrList(name) getOrElse fallback.flatMap(
+      InetPrefix.stringToInetAddr)
 }
-

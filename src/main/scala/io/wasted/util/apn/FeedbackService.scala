@@ -24,22 +24,30 @@ case class Feedback(token: String, expired: java.util.Date)
  */
 @Sharable
 class FeedbackService(params: Params, function: Feedback => AnyVal)
-  extends SimpleChannelInboundHandler[ByteBuf] with Logger { thisService =>
+  extends SimpleChannelInboundHandler[ByteBuf]
+  with Logger { thisService =>
   override val loggerName = getClass.getCanonicalName + ":" + params.name
 
-  private final val production = new InetSocketAddress(java.net.InetAddress.getByName("feedback.push.apple.com"), 2196)
-  private final val sandbox = new InetSocketAddress(java.net.InetAddress.getByName("feedback.sandbox.push.apple.com"), 2196)
+  private final val production = new InetSocketAddress(
+    java.net.InetAddress.getByName("feedback.push.apple.com"),
+    2196)
+  private final val sandbox = new InetSocketAddress(
+    java.net.InetAddress.getByName("feedback.sandbox.push.apple.com"),
+    2196)
   val addr: InetSocketAddress = if (params.sandbox) sandbox else production
 
   private val srv = new Bootstrap()
-  private val bootstrap = srv.group(Netty.eventLoop)
+  private val bootstrap = srv
+    .group(Netty.eventLoop)
     .channel(classOf[NioSocketChannel])
     .remoteAddress(addr)
     .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
     .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
     .option[java.lang.Boolean](ChannelOption.SO_REUSEADDR, true)
     .option[java.lang.Integer](ChannelOption.SO_LINGER, 0)
-    .option[java.lang.Integer](ChannelOption.CONNECT_TIMEOUT_MILLIS, params.timeout * 1000)
+    .option[java.lang.Integer](
+      ChannelOption.CONNECT_TIMEOUT_MILLIS,
+      params.timeout * 1000)
     .handler(new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel) {
         val p = ch.pipeline()
@@ -48,13 +56,17 @@ class FeedbackService(params: Params, function: Feedback => AnyVal)
       }
     })
 
-  def run(): Boolean = Tryo(bootstrap.clone.connect().sync().channel()).isDefined
+  def run(): Boolean =
+    Tryo(bootstrap.clone.connect().sync().channel()).isDefined
 
   override def channelRead0(ctx: ChannelHandlerContext, buf: ByteBuf) {
     if (buf.readableBytes > 6) {
       val ts = buf.readInt()
       val length = buf.readShort()
-      function(Feedback(new String(buf.readBytes(length).array), new java.util.Date(ts * 1000)))
+      function(
+        Feedback(
+          new String(buf.readBytes(length).array),
+          new java.util.Date(ts * 1000)))
     }
   }
 

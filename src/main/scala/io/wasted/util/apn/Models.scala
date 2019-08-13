@@ -14,13 +14,20 @@ import io.wasted.util.KeyStoreType
  * @param ident Transaction Identifier
  * @param expire Expiry
  */
-case class Message(deviceToken: String, payload: String, prio: Int, ident: Int = 10, expire: Option[java.util.Date] = None) {
+case class Message(
+    deviceToken: String,
+    payload:     String,
+    prio:        Int,
+    ident:       Int                    = 10,
+    expire:      Option[java.util.Date] = None) {
   lazy val bytes: ByteBuf = {
     val payloadBuf = Unpooled.copiedBuffer(payload, CharsetUtil.UTF_8)
-    val deviceTokenA: Array[Byte] = deviceToken.grouped(2).map(Integer.valueOf(_, 16).toByte).toArray
+    val deviceTokenA: Array[Byte] =
+      deviceToken.grouped(2).map(Integer.valueOf(_, 16).toByte).toArray
 
     // take 5 times the max-message length
-    val bufData = PooledByteBufAllocator.DEFAULT.buffer(5 * (3 + 32 + 256 + 4 + 4 + 1))
+    val bufData =
+      PooledByteBufAllocator.DEFAULT.buffer(5 * (3 + 32 + 256 + 4 + 4 + 1))
 
     // frame data
     bufData.writeByte(1.toByte)
@@ -63,7 +70,12 @@ case class Message(deviceToken: String, payload: String, prio: Int, ident: Int =
  * @param sandbox Wether to use Sandbox or Production
  * @param timeout Connection timeout, default shouldb e fine
  */
-case class Params(name: String, p12: java.io.InputStream, secret: String, sandbox: Boolean = false, timeout: Int = 5) {
+case class Params(
+    name:    String,
+    p12:     java.io.InputStream,
+    secret:  String,
+    sandbox: Boolean             = false,
+    timeout: Int                 = 5) {
   lazy val sslCtx = SslContextBuilder.forClient
     .trustManager(InsecureTrustManagerFactory.INSTANCE)
     .keyManager(p12, secret, KeyStoreType.P12)

@@ -1,7 +1,12 @@
 package io.wasted.util
 
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{ ConcurrentLinkedQueue, Executor, Executors, ForkJoinPool }
+import java.util.concurrent.{
+  ConcurrentLinkedQueue,
+  Executor,
+  Executors,
+  ForkJoinPool
+}
 
 import scala.concurrent.duration.Duration
 import scala.util.{ Failure, Success, Try }
@@ -11,7 +16,11 @@ import scala.util.{ Failure, Success, Try }
  *
  * @param ec ExecutionContext to be used
  */
-abstract class Wactor(maxQueueSize: Int = -1)(implicit ec: Executor = Wactor.ecForkJoin) extends Wactor.Address with Runnable with Logger {
+abstract class Wactor(maxQueueSize: Int = -1)(
+    implicit ec: Executor = Wactor.ecForkJoin)
+  extends Wactor.Address
+  with Runnable
+  with Logger {
   protected def receive: PartialFunction[Any, Any]
 
   /**
@@ -37,7 +46,8 @@ abstract class Wactor(maxQueueSize: Int = -1)(implicit ec: Executor = Wactor.ecF
 
   // Add a message with normal priority
   final override def !(msg: Any): Unit = behavior match {
-    case dead @ Die.`like` => dead(msg) // Efficiently bail out if we're _known_ to be dead
+    case dead @ Die.`like` =>
+      dead(msg) // Efficiently bail out if we're _known_ to be dead
     case _ =>
       var dontQueueBecauseWeAreNotHighEnough = false // ;)
       // if our queue is considered full, discard the head
@@ -52,7 +62,8 @@ abstract class Wactor(maxQueueSize: Int = -1)(implicit ec: Executor = Wactor.ecF
 
   // Add a message with high priority
   final override def !!(msg: Any): Unit = behavior match {
-    case dead @ Die.`like` => dead(msg) // Efficiently bail out if we're _known_ to be dead
+    case dead @ Die.`like` =>
+      dead(msg) // Efficiently bail out if we're _known_ to be dead
     case _ =>
       // if our queue is considered full, discard the head of our **normal inbox**
       if (maxQueueSize > 0 && queueSize.incrementAndGet > maxQueueSize) {
@@ -63,21 +74,22 @@ abstract class Wactor(maxQueueSize: Int = -1)(implicit ec: Executor = Wactor.ecF
       async() // try to schedule for execution
   }
 
-  final def run(): Unit = try {
-    if (on.get == 1) behavior = behavior({
-      queueSize.decrementAndGet
-      val ret = if (mboxHigh.isEmpty) mboxNormal.poll else mboxHigh.poll
-      if (ret == Die) {
-        mboxNormal.clear()
-        mboxHigh.clear()
-      }
-      ret
-    })(behavior)
-  } finally {
-    // Switch ourselves off, and then see if we should be rescheduled for execution
-    on.set(0)
-    async()
-  }
+  final def run(): Unit =
+    try {
+      if (on.get == 1) behavior = behavior({
+        queueSize.decrementAndGet
+        val ret = if (mboxHigh.isEmpty) mboxNormal.poll else mboxHigh.poll
+        if (ret == Die) {
+          mboxNormal.clear()
+          mboxHigh.clear()
+        }
+        ret
+      })(behavior)
+    } finally {
+      // Switch ourselves off, and then see if we should be rescheduled for execution
+      on.set(0)
+      async()
+    }
 
   // If there's something to process, and we're not already scheduled
   private final def async() {
@@ -135,7 +147,9 @@ object Wactor extends Logger {
      * @param msg Message to be sent to the actor
      * @param initialDelay Initial delay before first firing
      */
-    def scheduleOnce(msg: Any, initialDelay: Duration)(implicit timer: WheelTimer): Schedule.Action =
+    def scheduleOnce(msg: Any, initialDelay: Duration)(
+      implicit
+      timer: WheelTimer): Schedule.Action =
       Schedule.once(() => { this ! msg }, initialDelay)
 
     /**
@@ -144,7 +158,9 @@ object Wactor extends Logger {
      * @param msg Message to be sent to the actor
      * @param initialDelay Initial delay before first firing
      */
-    def scheduleOnceHigh(msg: Any, initialDelay: Duration)(implicit timer: WheelTimer): Schedule.Action =
+    def scheduleOnceHigh(msg: Any, initialDelay: Duration)(
+      implicit
+      timer: WheelTimer): Schedule.Action =
       Schedule.once(() => { this !! msg }, initialDelay)
 
     /**
@@ -154,7 +170,9 @@ object Wactor extends Logger {
      * @param initialDelay Initial delay before first firing
      * @param delay Delay to be called after the first firing
      */
-    def scheduleHigh(msg: Any, initialDelay: Duration, delay: Duration)(implicit timer: WheelTimer): Schedule.Action =
+    def scheduleHigh(msg: Any, initialDelay: Duration, delay: Duration)(
+      implicit
+      timer: WheelTimer): Schedule.Action =
       Schedule.again(() => { this !! msg }, initialDelay, delay)
 
     /**
@@ -164,7 +182,9 @@ object Wactor extends Logger {
      * @param initialDelay Initial delay before first firing
      * @param delay Delay to be called after the first firing
      */
-    def schedule(msg: Any, initialDelay: Duration, delay: Duration)(implicit timer: WheelTimer): Schedule.Action =
+    def schedule(msg: Any, initialDelay: Duration, delay: Duration)(
+      implicit
+      timer: WheelTimer): Schedule.Action =
       Schedule.again(() => { this ! msg }, initialDelay, delay)
   }
 }

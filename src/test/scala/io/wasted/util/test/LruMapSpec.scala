@@ -34,4 +34,3 @@ class LruMapSpec extends WordSpec {
   }
 
 }
-

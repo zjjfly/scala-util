@@ -33,43 +33,55 @@ trait NettyClientBuilder[Req, Resp] extends Logger {
     // produce a warnings if timeouts do not add up
     val reqT = requestTimeout.map(_ * (retries + 1))
     val outterTotalT: Iterable[Duration] = List(reqT, connectTimeout).flatten
-    if (outterTotalT.nonEmpty && globalTimeout.exists(_ < outterTotalT.reduceRight(_ + _))) {
+    if (outterTotalT.nonEmpty && globalTimeout.exists(
+      _ < outterTotalT.reduceRight(_ + _))) {
       val logger = Logger(getClass.getCanonicalName)
-      val str = "GlobalTimeout is lower than ConnectTimeout + RequestTimeout * (Retries + 1)"
+      val str =
+        "GlobalTimeout is lower than ConnectTimeout + RequestTimeout * (Retries + 1)"
       logger.warn(str + ". See debug for Trace")
       logger.debug(new IllegalArgumentException(str))
     }
 
     val innerReadReqT = codec.readTimeout.map(_ * (retries + 1))
     val innerReadT: Iterable[Duration] = List(reqT, innerReadReqT).flatten
-    if (innerReadT.nonEmpty && globalTimeout.exists(_ < innerReadT.reduceRight(_ + _))) {
+    if (innerReadT.nonEmpty && globalTimeout.exists(
+      _ < innerReadT.reduceRight(_ + _))) {
       val logger = Logger(getClass.getCanonicalName)
-      val str = "GlobalTimeout is lower than ConnectTimeout + ReadTimeout * (Retries + 1)"
+      val str =
+        "GlobalTimeout is lower than ConnectTimeout + ReadTimeout * (Retries + 1)"
       logger.warn(str + ". See debug for Trace")
       logger.debug(new IllegalArgumentException(str))
     }
 
     val innerWriteReqT = codec.writeTimeout.map(_ * (retries + 1))
     val innerWriteT: Iterable[Duration] = List(reqT, innerWriteReqT).flatten
-    if (innerWriteT.nonEmpty && globalTimeout.exists(_ < innerWriteT.reduceRight(_ + _))) {
+    if (innerWriteT.nonEmpty && globalTimeout.exists(
+      _ < innerWriteT.reduceRight(_ + _))) {
       val logger = Logger(getClass.getCanonicalName)
-      val str = "GlobalTimeout is lower than ConnectTimeout + WriteTimeout * (Retries + 1)"
+      val str =
+        "GlobalTimeout is lower than ConnectTimeout + WriteTimeout * (Retries + 1)"
       logger.warn(str + ". See debug for Trace")
       logger.debug(new IllegalArgumentException(str))
     }
     val handler = new ChannelInitializer[SocketChannel] {
-      override def initChannel(ch: SocketChannel): Unit = codec.clientPipeline(ch)
+      override def initChannel(ch: SocketChannel): Unit =
+        codec.clientPipeline(ch)
     }
-    val baseGrp = clnt.group(eventLoop)
+    val baseGrp = clnt
+      .group(eventLoop)
       .channel(classOf[NioSocketChannel])
       .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, tcpNoDelay)
       .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, tcpKeepAlive)
       .option[java.lang.Boolean](ChannelOption.SO_REUSEADDR, reuseAddr)
       .option[java.lang.Integer](ChannelOption.SO_LINGER, soLinger)
 
-    val tcpCtGrp = tcpConnectTimeout.map { tcpCT =>
-      baseGrp.option[java.lang.Integer](ChannelOption.CONNECT_TIMEOUT_MILLIS, tcpCT.inMillis.toInt)
-    }.getOrElse(baseGrp)
+    val tcpCtGrp = tcpConnectTimeout
+      .map { tcpCT =>
+        baseGrp.option[java.lang.Integer](
+          ChannelOption.CONNECT_TIMEOUT_MILLIS,
+          tcpCT.inMillis.toInt)
+      }
+      .getOrElse(baseGrp)
 
     tcpCtGrp.handler(handler)
   }
@@ -85,7 +97,8 @@ trait NettyClientBuilder[Req, Resp] extends Logger {
    * @param req Request object
    * @return Future Resp
    */
-  def write(uri: java.net.URI, req: Req): Future[Resp] = write(uri.toString, req)
+  def write(uri: java.net.URI, req: Req): Future[Resp] =
+    write(uri.toString, req)
 
   /**
    * Write a Request directly through to the given URI.
@@ -110,22 +123,29 @@ trait NettyClientBuilder[Req, Resp] extends Logger {
    * @param counter Request counter
    * @return Future Resp
    */
-  protected[this] def run(uri: String, req: Req, counter: Int = 0): Future[Resp] = {
+  protected[this] def run(
+    uri:     String,
+    req:     Req,
+    counter: Int    = 0): Future[Resp] = {
     // if it is the first time fire this request, we retain it twice for retries
     ReferenceCountUtil.retain(req, if (counter == 0) 1 else 2)
-    getConnection(uri).flatMap { chan =>
-      val resp = codec.clientConnected(chan, req)
-      requestTimeout.map(resp.raiseWithin).getOrElse(resp).onFailure {
-        case t: Throwable => resp.map(ReferenceCountUtil.release(_)) // release on failure
+    getConnection(uri)
+      .flatMap { chan =>
+        val resp = codec.clientConnected(chan, req)
+        requestTimeout.map(resp.raiseWithin).getOrElse(resp).onFailure {
+          case t: Throwable =>
+            resp.map(ReferenceCountUtil.release(_)) // release on failure
+        }
       }
-    }.rescue {
-      case t: Throwable if counter <= retries =>
-        run(uri, req, counter + 1)
-      case t: Throwable => Future.exception(t)
-    }.ensure {
-      // clean up the old retain
-      if (counter == 0) ReferenceCountUtil.release(req)
-    }
+      .rescue {
+        case t: Throwable if counter <= retries =>
+          run(uri, req, counter + 1)
+        case t: Throwable => Future.exception(t)
+      }
+      .ensure {
+        // clean up the old retain
+        if (counter == 0) ReferenceCountUtil.release(req)
+      }
   }
 
   /**
@@ -152,7 +172,8 @@ trait NettyClientBuilder[Req, Resp] extends Logger {
       case Nil => bootstrap.clone().connect(safeUri.getHost, getPort(safeUri))
       case hosts =>
         // round robin connection
-        val sock = hosts((requestCounter.incrementAndGet() % hosts.length).toInt)
+        val sock = hosts(
+          (requestCounter.incrementAndGet() % hosts.length).toInt)
         bootstrap.connect(sock)
     }
     connected.addListener { cf: ChannelFuture =>

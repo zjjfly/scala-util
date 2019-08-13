@@ -6,6 +6,7 @@ import io.netty.channel.ChannelHandlerContext
  * Basic Netty Exception-handling with Logging capabilities.
  */
 object ExceptionHandler {
+
   /**
    * Precompiled Patterns for performance reasons.
    * Filters unimportant/low level exceptions.
@@ -16,7 +17,8 @@ object ExceptionHandler {
     "io.netty.handler.codec.CorruptedFrameException.*".r,
     "java.io.IOException.*".r,
     "javax.net.ssl.SSLException.*".r,
-    "java.lang.IllegalArgumentException.*".r)
+    "java.lang.IllegalArgumentException.*".r
+  )
 
   /**
    * Bad client = closed connection, malformed requests, etc.

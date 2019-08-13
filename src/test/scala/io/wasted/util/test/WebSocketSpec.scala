@@ -7,35 +7,52 @@ import com.twitter.conversions.time._
 import com.twitter.util.{ Await, Promise }
 import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http._
-import io.netty.handler.codec.http.websocketx.{ BinaryWebSocketFrame, TextWebSocketFrame }
+import io.netty.handler.codec.http.websocketx.{
+  BinaryWebSocketFrame,
+  TextWebSocketFrame
+}
 import io.netty.util.{ CharsetUtil, ReferenceCountUtil }
 import io.wasted.util.http._
 import io.wasted.util.{ Logger, WheelTimer }
 import org.scalatest._
 import org.scalatest.concurrent._
 
-class WebSocketSpec extends WordSpec with ScalaFutures with AsyncAssertions with BeforeAndAfter with Logger {
+class WebSocketSpec
+  extends WordSpec
+  with ScalaFutures
+  with AsyncAssertions
+  with BeforeAndAfter
+  with Logger {
   implicit val wheelTimer = WheelTimer
 
   val responder = new HttpResponder("wasted-ws")
-  var server = new AtomicReference[HttpServer[FullHttpRequest, HttpResponse]](null)
+  var server =
+    new AtomicReference[HttpServer[FullHttpRequest, HttpResponse]](null)
 
   before {
-    val socket1 = WebSocketHandler().onConnect { chan =>
-      info("client connected")
-    }.onDisconnect { chan =>
-      info("client disconnected")
-    }.handler {
-      case (ctx, f) => println(f); Some(f.map(_.retain()))
-    }.withHttpHandler {
-      case (ctx, req) =>
-        req.map { req =>
-          val resp = if (req.uri == "/bad_gw") HttpResponseStatus.BAD_GATEWAY else HttpResponseStatus.ACCEPTED
-          responder(resp)
-        }
-    }
-    server.set(HttpServer(NettyHttpCodec[FullHttpRequest, HttpResponse]())
-      .handler(socket1.dispatch).bind(new InetSocketAddress(8890)))
+    val socket1 = WebSocketHandler()
+      .onConnect { chan =>
+        info("client connected")
+      }
+      .onDisconnect { chan =>
+        info("client disconnected")
+      }
+      .handler {
+        case (ctx, f) => println(f); Some(f.map(_.retain()))
+      }
+      .withHttpHandler {
+        case (ctx, req) =>
+          req.map { req =>
+            val resp =
+              if (req.uri == "/bad_gw") HttpResponseStatus.BAD_GATEWAY
+              else HttpResponseStatus.ACCEPTED
+            responder(resp)
+          }
+      }
+    server.set(
+      HttpServer(NettyHttpCodec[FullHttpRequest, HttpResponse]())
+        .handler(socket1.dispatch)
+        .bind(new InetSocketAddress(8890)))
   }
 
   val stringT = "worked"
@@ -47,7 +64,10 @@ class WebSocketSpec extends WordSpec with ScalaFutures with AsyncAssertions with
 
   "GET Request to embedded WebSocket Server" should {
     "open connection and send some data, close after" in {
-      val client1 = Await.result(WebSocketClient().connectTo("127.0.0.1", 8890).open(), 5.seconds)
+      val client1 =
+        Await.result(
+          WebSocketClient().connectTo("127.0.0.1", 8890).open(),
+          5.seconds)
       client1.foreach {
         case text: TextWebSocketFrame =>
           string.setValue(text.text())
@@ -71,7 +91,9 @@ class WebSocketSpec extends WordSpec with ScalaFutures with AsyncAssertions with
     }
   }
 
-  val client2 = HttpClient[FullHttpResponse]().withSpecifics(NettyHttpCodec()).withTcpKeepAlive(true)
+  val client2 = HttpClient[FullHttpResponse]()
+    .withSpecifics(NettyHttpCodec())
+    .withTcpKeepAlive(true)
 
   "GET Request to embedded Http Server" should {
     "returns status code ACCEPTED" in {
@@ -80,7 +102,9 @@ class WebSocketSpec extends WordSpec with ScalaFutures with AsyncAssertions with
       resp2.content.release()
     }
     "returns status code BAD_GATEWAY" in {
-      val resp3: FullHttpResponse = Await.result(client2.get(new java.net.URI("http://localhost:8890/bad_gw")), 5.seconds)
+      val resp3: FullHttpResponse = Await.result(
+        client2.get(new java.net.URI("http://localhost:8890/bad_gw")),
+        5.seconds)
       assert(resp3.status() equals HttpResponseStatus.BAD_GATEWAY)
       resp3.content.release()
     }
@@ -90,4 +114,3 @@ class WebSocketSpec extends WordSpec with ScalaFutures with AsyncAssertions with
     server.get.shutdown()
   }
 }
-

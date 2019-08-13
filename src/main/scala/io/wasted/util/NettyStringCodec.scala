@@ -18,21 +18,29 @@ import io.wasted.util.http.HttpClient.Handlers
  * @param in Inbound Offer
  * @param channel Netty Channel
  */
-final case class NettyStringChannel(out: Broker[String], in: Offer[String], private val channel: Channel) {
+final case class NettyStringChannel(
+    out:                 Broker[String],
+    in:                  Offer[String],
+    private val channel: Channel) {
   def close(): Future[Unit] = {
     val closed = Promise[Unit]()
-    channel.closeFuture().addListener(new ChannelFutureListener {
-      override def operationComplete(f: ChannelFuture): Unit = {
-        closed.setDone()
-      }
-    })
+    channel
+      .closeFuture()
+      .addListener(new ChannelFutureListener {
+        override def operationComplete(f: ChannelFuture): Unit = {
+          closed.setDone()
+        }
+      })
     closed.raiseWithin(Duration(2, TimeUnit.SECONDS))(WheelTimer.twitter)
   }
 
   val onDisconnect = Promise[Unit]()
-  channel.closeFuture().addListener(new ChannelFutureListener {
-    override def operationComplete(f: ChannelFuture): Unit = onDisconnect.setDone()
-  })
+  channel
+    .closeFuture()
+    .addListener(new ChannelFutureListener {
+      override def operationComplete(f: ChannelFuture): Unit =
+        onDisconnect.setDone()
+    })
 
   def !(s: String): Unit = out ! s
   def foreach(run: String => Unit) = in.foreach(run)
@@ -50,14 +58,18 @@ final case class NettyStringChannel(out: Broker[String], in: Offer[String], priv
 final case class NettyStringCodec(
     readTimeout:  Option[Duration]   = None,
     writeTimeout: Option[Duration]   = None,
-    sslCtx:       Option[SslContext] = None) extends NettyCodec[String, NettyStringChannel] {
+    sslCtx:       Option[SslContext] = None)
+  extends NettyCodec[String, NettyStringChannel] {
 
   def withTls(sslCtx: SslContext) = copy(sslCtx = Some(sslCtx))
   def withReadTimeout(timeout: Duration) = copy(readTimeout = Some(timeout))
   def withWriteTimeout(timeout: Duration) = copy(writeTimeout = Some(timeout))
 
   def withInsecureTls() = {
-    val ctx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build()
+    val ctx = SslContextBuilder
+      .forClient()
+      .trustManager(InsecureTrustManagerFactory.INSTANCE)
+      .build()
     copy(sslCtx = Some(ctx))
   }
 
@@ -83,43 +95,58 @@ final case class NettyStringCodec(
    * @param request Object we want to send
    * @return Future Output Broker and Inbound Offer and Close Function
    */
-  def clientConnected(channel: Channel, request: String): Future[NettyStringChannel] = {
+  def clientConnected(
+    channel: Channel,
+    request: String): Future[NettyStringChannel] = {
     val inBroker = new Broker[String]
     val outBroker = new Broker[String]
     val result = Promise[NettyStringChannel]
 
     readTimeout.foreach { readTimeout =>
-      channel.pipeline.addFirst(Handlers.readTimeout, new ReadTimeoutHandler(readTimeout.inMillis.toInt) {
-        override def readTimedOut(ctx: ChannelHandlerContext) {
-          ctx.channel.close
-          result.setException(new IllegalStateException("Read timed out"))
+      channel.pipeline.addFirst(
+        Handlers.readTimeout,
+        new ReadTimeoutHandler(readTimeout.inMillis.toInt) {
+          override def readTimedOut(ctx: ChannelHandlerContext) {
+            ctx.channel.close
+            result.setException(new IllegalStateException("Read timed out"))
+          }
         }
-      })
+      )
     }
     writeTimeout.foreach { writeTimeout =>
-      channel.pipeline.addFirst(Handlers.writeTimeout, new WriteTimeoutHandler(writeTimeout.inMillis.toInt) {
-        override def writeTimedOut(ctx: ChannelHandlerContext) {
-          ctx.channel.close
-          result.setException(new IllegalStateException("Write timed out"))
+      channel.pipeline.addFirst(
+        Handlers.writeTimeout,
+        new WriteTimeoutHandler(writeTimeout.inMillis.toInt) {
+          override def writeTimedOut(ctx: ChannelHandlerContext) {
+            ctx.channel.close
+            result.setException(new IllegalStateException("Write timed out"))
+          }
         }
-      })
+      )
     }
 
-    channel.pipeline.addLast(Handlers.handler, new SimpleChannelInboundHandler[String] {
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        http.ExceptionHandler(ctx, cause)
-        result.setException(cause)
-        ctx.channel.close
-      }
+    channel.pipeline.addLast(
+      Handlers.handler,
+      new SimpleChannelInboundHandler[String] {
+        override def exceptionCaught(
+          ctx:   ChannelHandlerContext,
+          cause: Throwable) {
+          http.ExceptionHandler(ctx, cause)
+          result.setException(cause)
+          ctx.channel.close
+        }
 
-      def channelRead0(ctx: ChannelHandlerContext, msg: String) {
-        // if our future has not been filled yet (first response), we reply with the brokers
-        if (!result.isDefined) result.setValue(NettyStringChannel(outBroker, inBroker.recv, channel))
+        def channelRead0(ctx: ChannelHandlerContext, msg: String) {
+          // if our future has not been filled yet (first response), we reply with the brokers
+          if (!result.isDefined)
+            result.setValue(
+              NettyStringChannel(outBroker, inBroker.recv, channel))
 
-        // we wire the inbound packet to the Broker
-        inBroker ! msg
+          // we wire the inbound packet to the Broker
+          inBroker ! msg
+        }
       }
-    })
+    )
 
     // we wire the outbound broker to send to the channel
     outBroker.recv.foreach(buf => channel.writeAndFlush(buf))

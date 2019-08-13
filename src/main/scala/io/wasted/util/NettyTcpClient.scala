@@ -38,25 +38,40 @@ case class NettyTcpClient[Req, Resp](
     soLinger:               Int                     = 0,
     retries:                Int                     = 0,
     eventLoop:              EventLoopGroup          = Netty.eventLoop,
-    pipeline:               Channel => Unit         = p => ()) extends NettyClientBuilder[Req, Resp] {
+    pipeline:               Channel => Unit         = p => ())
+  extends NettyClientBuilder[Req, Resp] {
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)
-  def withTcpNoDelay(tcpNoDelay: Boolean) = copy[Req, Resp](tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
+  def withTcpNoDelay(tcpNoDelay: Boolean) =
+    copy[Req, Resp](tcpNoDelay = tcpNoDelay)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy[Req, Resp](reuseAddr = reuseAddr)
-  def withGlobalTimeout(globalTimeout: Duration) = copy[Req, Resp](globalTimeout = Some(globalTimeout))
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy[Req, Resp](tcpConnectTimeout = Some(tcpConnectTimeout))
-  def withConnectTimeout(connectTimeout: Duration) = copy[Req, Resp](connectTimeout = Some(connectTimeout))
-  def withRequestTimeout(requestTimeout: Duration) = copy[Req, Resp](requestTimeout = Some(requestTimeout))
-  def withHostConnectionLimit(limit: Int) = copy[Req, Resp](hostConnectionLimit = limit)
-  def withHostConnectionCoresize(coreSize: Int) = copy[Req, Resp](hostConnectionCoreSize = coreSize)
+  def withGlobalTimeout(globalTimeout: Duration) =
+    copy[Req, Resp](globalTimeout = Some(globalTimeout))
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy[Req, Resp](tcpConnectTimeout = Some(tcpConnectTimeout))
+  def withConnectTimeout(connectTimeout: Duration) =
+    copy[Req, Resp](connectTimeout = Some(connectTimeout))
+  def withRequestTimeout(requestTimeout: Duration) =
+    copy[Req, Resp](requestTimeout = Some(requestTimeout))
+  def withHostConnectionLimit(limit: Int) =
+    copy[Req, Resp](hostConnectionLimit = limit)
+  def withHostConnectionCoresize(coreSize: Int) =
+    copy[Req, Resp](hostConnectionCoreSize = coreSize)
   def withRetries(retries: Int) = copy[Req, Resp](retries = retries)
-  def withEventLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](eventLoop = eventLoop)
-  def withPipeline(pipeline: Channel => Unit) = copy[Req, Resp](pipeline = pipeline)
-  def connectTo(host: String, port: Int) = copy[Req, Resp](remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
-  def connectTo(hosts: List[InetSocketAddress]) = copy[Req, Resp](remote = hosts)
+  def withEventLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](eventLoop = eventLoop)
+  def withPipeline(pipeline: Channel => Unit) =
+    copy[Req, Resp](pipeline = pipeline)
+  def connectTo(host: String, port: Int) =
+    copy[Req, Resp](
+      remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
+  def connectTo(hosts: List[InetSocketAddress]) =
+    copy[Req, Resp](remote = hosts)
 
-  def getPort(uri: java.net.URI): Int = remote.headOption.map(_.getPort).getOrElse {
-    throw new IllegalArgumentException("No port was given through hosts Parameter")
-  }
+  def getPort(uri: java.net.URI): Int =
+    remote.headOption.map(_.getPort).getOrElse {
+      throw new IllegalArgumentException(
+        "No port was given through hosts Parameter")
+    }
 }
-

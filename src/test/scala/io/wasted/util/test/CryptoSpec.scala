@@ -13,7 +13,8 @@ class CryptoSpec extends WordSpec {
   val encrypted: Array[Byte] = Crypto.encryptBinary(ourSalt, ourString)
   val base64Encoded: String = Base64.encodeString(encrypted)
   val base64Decoded: Array[Byte] = Base64.decodeBinary(base64Encoded)
-  val theirString = Crypto.decryptString(ourSalt, Base64.decodeBinary(base64Encoded))
+  val theirString =
+    Crypto.decryptString(ourSalt, Base64.decodeBinary(base64Encoded))
 
   "Pregenerated Base64 (" + ourString + ")" should {
     "be the same as the decrypted (" + theirString + ")" in {
@@ -28,4 +29,3 @@ class CryptoSpec extends WordSpec {
   }
 
 }
-

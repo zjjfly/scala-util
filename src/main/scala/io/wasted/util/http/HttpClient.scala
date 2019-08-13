@@ -55,28 +55,42 @@ case class HttpClient[T <: HttpObject](
     tcpNoDelay:             Boolean                        = true,
     soLinger:               Int                            = 0,
     retries:                Int                            = 0,
-    eventLoop:              EventLoopGroup                 = Netty.eventLoop) extends NettyClientBuilder[HttpRequest, T] {
-  def withSpecifics(codec: NettyHttpCodec[HttpRequest, T]) = copy[T](codec = codec)
+    eventLoop:              EventLoopGroup                 = Netty.eventLoop)
+  extends NettyClientBuilder[HttpRequest, T] {
+  def withSpecifics(codec: NettyHttpCodec[HttpRequest, T]) =
+    copy[T](codec = codec)
   def withSoLinger(soLinger: Int) = copy[T](soLinger = soLinger)
   def withTcpNoDelay(tcpNoDelay: Boolean) = copy[T](tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy[T](tcpKeepAlive = tcpKeepAlive)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy[T](tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy[T](reuseAddr = reuseAddr)
-  def withGlobalTimeout(globalTimeout: Duration) = copy[T](globalTimeout = Some(globalTimeout))
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy[T](tcpConnectTimeout = Some(tcpConnectTimeout))
-  def withConnectTimeout(connectTimeout: Duration) = copy[T](connectTimeout = Some(connectTimeout))
-  def withRequestTimeout(requestTimeout: Duration) = copy[T](requestTimeout = Some(requestTimeout))
+  def withGlobalTimeout(globalTimeout: Duration) =
+    copy[T](globalTimeout = Some(globalTimeout))
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy[T](tcpConnectTimeout = Some(tcpConnectTimeout))
+  def withConnectTimeout(connectTimeout: Duration) =
+    copy[T](connectTimeout = Some(connectTimeout))
+  def withRequestTimeout(requestTimeout: Duration) =
+    copy[T](requestTimeout = Some(requestTimeout))
   def withHostConnectionLimit(limit: Int) = copy[T](hostConnectionLimit = limit)
-  def withHostConnectionCoresize(coreSize: Int) = copy[T](hostConnectionCoreSize = coreSize)
+  def withHostConnectionCoresize(coreSize: Int) =
+    copy[T](hostConnectionCoreSize = coreSize)
   def withRetries(retries: Int) = copy[T](retries = retries)
   def withEventLoop(eventLoop: EventLoopGroup) = copy[T](eventLoop = eventLoop)
-  def connectTo(host: String, port: Int) = copy[T](remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
+  def connectTo(host: String, port: Int) =
+    copy[T](
+      remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
   def connectTo(hosts: List[InetSocketAddress]) = copy[T](remote = hosts)
 
-  protected def getPortString(url: java.net.URI): String = if (url.getPort == -1) "" else ":" + url.getPort
-  protected def getPort(url: java.net.URI): Int = if (url.getPort > 0) url.getPort else url.getScheme match {
-    case "http"  => 80
-    case "https" => 443
-  }
+  protected def getPortString(url: java.net.URI): String =
+    if (url.getPort == -1) "" else ":" + url.getPort
+  protected def getPort(url: java.net.URI): Int =
+    if (url.getPort > 0) url.getPort
+    else
+      url.getScheme match {
+        case "http"  => 80
+        case "https" => 443
+      }
 
   /**
    * Run a GET-Request on the given URI.
@@ -84,9 +98,14 @@ case class HttpClient[T <: HttpObject](
    * @param url What could this be?
    * @param headers The mysteries keep piling up!
    */
-  def get(url: java.net.URI, headers: Map[String, String] = Map()): Future[T] = {
-    val path = if (url.getQuery == null) url.getPath else url.getPath + "?" + url.getQuery
-    val req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path)
+  def get(
+    url:     java.net.URI,
+    headers: Map[String, String] = Map()): Future[T] = {
+    val path =
+      if (url.getQuery == null) url.getPath
+      else url.getPath + "?" + url.getQuery
+    val req =
+      new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.GET, path)
     req.headers.set(HttpHeaderNames.HOST, url.getHost + getPortString(url))
     req.headers.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
     headers.foreach(f => req.headers.set(f._1, f._2))
@@ -102,10 +121,18 @@ case class HttpClient[T <: HttpObject](
    * @param headers I don't like to explain trivial stuff
    * @param method HTTP Method to be used
    */
-  def post(url: java.net.URI, mime: String, body: Seq[Byte] = Seq(), headers: Map[String, String] = Map(), method: HttpMethod): Future[T] = {
+  def post(
+    url:     java.net.URI,
+    mime:    String,
+    body:    Seq[Byte]           = Seq(),
+    headers: Map[String, String] = Map(),
+    method:  HttpMethod): Future[T] = {
     val content = Unpooled.wrappedBuffer(body.toArray)
-    val path = if (url.getQuery == null) url.getPath else url.getPath + "?" + url.getQuery
-    val req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, path, content)
+    val path =
+      if (url.getQuery == null) url.getPath
+      else url.getPath + "?" + url.getQuery
+    val req =
+      new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, method, path, content)
     req.headers.set(HttpHeaderNames.HOST, url.getHost + getPortString(url))
     req.headers.set(HttpHeaderNames.CONNECTION, HttpHeaderValues.CLOSE)
     req.headers.set(HttpHeaderNames.CONTENT_TYPE, mime)
@@ -119,8 +146,12 @@ case class HttpClient[T <: HttpObject](
    * @param req big mystery
    * @param hostAndPort optional host and port to send to
    */
-  def raw(req: HttpRequest, hostAndPort: Option[(String, Int)] = None): Future[T] = {
-    assert(remote.nonEmpty || hostAndPort.isDefined, "Either remotes need to be specified on creation or hostAndPort needs to be given")
+  def raw(
+    req:         HttpRequest,
+    hostAndPort: Option[(String, Int)] = None): Future[T] = {
+    assert(
+      remote.nonEmpty || hostAndPort.isDefined,
+      "Either remotes need to be specified on creation or hostAndPort needs to be given")
     val whereTo = hostAndPort.getOrElse {
       val r = remote.head
       r.getHostName -> r.getPort
@@ -137,9 +168,19 @@ case class HttpClient[T <: HttpObject](
    * @param sign Signing Key for thruput.io platform
    * @param payload Payload to be sent
    */
-  def thruput(url: java.net.URI, auth: java.util.UUID, sign: java.util.UUID, payload: String): Future[T] = {
-    val headers = Map("X-Io-Auth" -> auth.toString, "X-Io-Sign" -> io.wasted.util.Hashing.sign(sign.toString, payload))
-    post(url, "application/json", payload.map(_.toByte), headers, HttpMethod.PUT)
+  def thruput(
+    url:     java.net.URI,
+    auth:    java.util.UUID,
+    sign:    java.util.UUID,
+    payload: String): Future[T] = {
+    val headers = Map(
+      "X-Io-Auth" -> auth.toString,
+      "X-Io-Sign" -> io.wasted.util.Hashing.sign(sign.toString, payload))
+    post(
+      url,
+      "application/json",
+      payload.map(_.toByte),
+      headers,
+      HttpMethod.PUT)
   }
 }
-

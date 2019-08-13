@@ -7,14 +7,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 import com.twitter.concurrent.{ Broker, Offer }
 import com.twitter.conversions.time._
 import com.twitter.util._
-import io.netty.buffer.{ ByteBufUtil, PooledByteBufAllocator, UnpooledByteBufAllocator }
+import io.netty.buffer.{
+  ByteBufUtil,
+  PooledByteBufAllocator,
+  UnpooledByteBufAllocator
+}
 import io.netty.channel._
 import io.netty.handler.codec.redis._
 import io.netty.util.{ CharsetUtil, ReferenceCountUtil }
 
 import scala.collection.JavaConverters._
 
-private[redis] final case class RedisAction[R <: RedisMessage](p: Promise[R], msg: ArrayRedisMessage)
+private[redis] final case class RedisAction[R <: RedisMessage](
+    p:   Promise[R],
+    msg: ArrayRedisMessage)
 
 /**
  * String Channel
@@ -22,7 +28,11 @@ private[redis] final case class RedisAction[R <: RedisMessage](p: Promise[R], ms
  * @param out Outbound Broker
  * @param in Inbound Offer
  */
-final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMessage], private val codec: NettyRedisCodec) extends Logger {
+final case class NettyRedisChannel(
+    out:               Broker[RedisMessage],
+    in:                Offer[RedisMessage],
+    private val codec: NettyRedisCodec)
+  extends Logger {
   private[this] val stopping = new AtomicBoolean(false)
 
   private[this] val allocator = UnpooledByteBufAllocator.DEFAULT
@@ -37,33 +47,50 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
 
   private[redis] def setChannel(chan: Channel): Unit = synchronized {
     if (chan.isActive && chan.isOpen && chan.isWritable) {
-      chan.closeFuture().addListener(new ChannelFutureListener {
-        override def operationComplete(f: ChannelFuture): Unit = if (!stopping.get) {
-          Schedule.once(() => client.map(_.connect()), 1.second)
-        }
-      })
+      chan
+        .closeFuture()
+        .addListener(new ChannelFutureListener {
+          override def operationComplete(f: ChannelFuture): Unit =
+            if (!stopping.get) {
+              Schedule.once(() => client.map(_.connect()), 1.second)
+            }
+        })
       channel = Some(chan)
-    } else error("Bad channel set! Active: %s, Open: %s, Writable: %s", chan.isActive, chan.isOpen, chan.isWritable)
+    } else
+      error(
+        "Bad channel set! Active: %s, Open: %s, Writable: %s",
+        chan.isActive,
+        chan.isOpen,
+        chan.isWritable)
   }
 
-  def isConnected(): Boolean = channel.exists(chan => chan.isActive && chan.isOpen && chan.isWritable)
+  def isConnected(): Boolean =
+    channel.exists(chan => chan.isActive && chan.isOpen && chan.isWritable)
 
-  def close(): Future[Unit] = if (!isConnected()) Future.Done else {
-    stopping.set(true)
-    val closed = Promise[Unit]()
-    send("quit")
-    channel.map(_.closeFuture().addListener(new ChannelFutureListener {
-      override def operationComplete(f: ChannelFuture): Unit = {
-        closed.setDone()
-      }
-    })).getOrElse(closed.setDone())
-    closed.raiseWithin(Duration(5, TimeUnit.SECONDS))(WheelTimer.twitter)
-  }
+  def close(): Future[Unit] =
+    if (!isConnected()) Future.Done
+    else {
+      stopping.set(true)
+      val closed = Promise[Unit]()
+      send("quit")
+      channel
+        .map(_.closeFuture().addListener(new ChannelFutureListener {
+          override def operationComplete(f: ChannelFuture): Unit = {
+            closed.setDone()
+          }
+        }))
+        .getOrElse(closed.setDone())
+      closed.raiseWithin(Duration(5, TimeUnit.SECONDS))(WheelTimer.twitter)
+    }
   def timeout = client.flatMap(_.requestTimeout).getOrElse(5.seconds)
 
-  def send[R <: RedisMessage](key: String, values: Seq[String]): Future[R] = send(List(key) ++ values: _*)
+  def send[R <: RedisMessage](key: String, values: Seq[String]): Future[R] =
+    send(List(key) ++ values: _*)
   def send[R <: RedisMessage](str: String*): Future[R] = synchronized {
-    val cmds = str.map(s => new FullBulkStringRedisMessage(ByteBufUtil.writeUtf8(allocator, s)).asInstanceOf[RedisMessage])
+    val cmds = str.map(
+      s =>
+        new FullBulkStringRedisMessage(ByteBufUtil.writeUtf8(allocator, s))
+          .asInstanceOf[RedisMessage])
     val msg = new ArrayRedisMessage(cmds.toList.asJava)
     out ! msg
     in.sync().flatMap {
@@ -75,7 +102,9 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
         Future.value(o.asInstanceOf[R])
       case o =>
         ReferenceCountUtil.release(o)
-        Future.exception(new Exception("Response of type mismatch, got %s.".format(o.getClass.getSimpleName)))
+        Future.exception(
+          new Exception("Response of type mismatch, got %s.".format(
+            o.getClass.getSimpleName)))
     }
   }
 
@@ -94,48 +123,67 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     f.map(_.content())
   }.ensure(f.map(ReferenceCountUtil.release(_)))
 
-  private def unit(f: Future[SimpleStringRedisMessage]): Future[Unit] = f.flatMap { x =>
-    ReferenceCountUtil.release(x)
-    Future.Done
-  }
-
-  private def bstrarrmap(keys: Seq[String], f: Future[ArrayRedisMessage]): Future[Map[String, String]] = f.map { arm =>
-    keys.zipWithIndex.map {
-      case (key, index) =>
-        val value = arm.children().get(index).asInstanceOf[FullBulkStringRedisMessage]
-        val e = key -> value.content().toString(CharsetUtil.UTF_8)
-        value.release()
-        e
-    }.toMap
-  }
-
-  private def bstrmap(f: Future[ArrayRedisMessage]): Future[Map[String, String]] = f.map { arm =>
-    arm.children().asScala.grouped(2).map { group =>
-      val key = group(0).asInstanceOf[FullBulkStringRedisMessage]
-      val value = group(1).asInstanceOf[FullBulkStringRedisMessage]
-      val e = key.content().toString(CharsetUtil.UTF_8) -> value.content().toString(CharsetUtil.UTF_8)
-      value.release()
-      key.release()
-      e
-    }.toMap
-  }
-
-  private def barray(f: Future[ArrayRedisMessage]): Future[Seq[String]] = f.map { arm =>
-    arm.children().asScala.map { strM =>
-      val value = strM.asInstanceOf[FullBulkStringRedisMessage]
-      val s = value.content().toString(CharsetUtil.UTF_8)
-      value.release()
-      s
+  private def unit(f: Future[SimpleStringRedisMessage]): Future[Unit] =
+    f.flatMap { x =>
+      ReferenceCountUtil.release(x)
+      Future.Done
     }
+
+  private def bstrarrmap(
+    keys: Seq[String],
+    f:    Future[ArrayRedisMessage]): Future[Map[String, String]] = f.map {
+    arm =>
+      keys.zipWithIndex.map {
+        case (key, index) =>
+          val value =
+            arm.children().get(index).asInstanceOf[FullBulkStringRedisMessage]
+          val e = key -> value.content().toString(CharsetUtil.UTF_8)
+          value.release()
+          e
+      }.toMap
   }
 
-  private def bstr(f: Future[FullBulkStringRedisMessage]): Future[String] = f.map { fbsrm =>
-    fbsrm.content().toString(CharsetUtil.UTF_8)
-  }.ensure(f.map(ReferenceCountUtil.release(_)))
+  private def bstrmap(
+    f: Future[ArrayRedisMessage]): Future[Map[String, String]] = f.map {
+    arm =>
+      arm
+        .children()
+        .asScala
+        .grouped(2)
+        .map { group =>
+          val key = group(0).asInstanceOf[FullBulkStringRedisMessage]
+          val value = group(1).asInstanceOf[FullBulkStringRedisMessage]
+          val e = key.content().toString(CharsetUtil.UTF_8) -> value
+            .content()
+            .toString(CharsetUtil.UTF_8)
+          value.release()
+          key.release()
+          e
+        }
+        .toMap
+  }
 
-  private def bstr2float(f: Future[FullBulkStringRedisMessage]): Future[Float] = f.map { fbsrm =>
-    fbsrm.content().toString(CharsetUtil.UTF_8).toFloat
-  }.ensure(f.map(ReferenceCountUtil.release(_)))
+  private def barray(f: Future[ArrayRedisMessage]): Future[Seq[String]] =
+    f.map { arm =>
+      arm.children().asScala.map { strM =>
+        val value = strM.asInstanceOf[FullBulkStringRedisMessage]
+        val s = value.content().toString(CharsetUtil.UTF_8)
+        value.release()
+        s
+      }
+    }
+
+  private def bstr(f: Future[FullBulkStringRedisMessage]): Future[String] =
+    f.map { fbsrm =>
+      fbsrm.content().toString(CharsetUtil.UTF_8)
+    }
+      .ensure(f.map(ReferenceCountUtil.release(_)))
+
+  private def bstr2float(f: Future[FullBulkStringRedisMessage]): Future[Float] =
+    f.map { fbsrm =>
+      fbsrm.content().toString(CharsetUtil.UTF_8).toFloat
+    }
+      .ensure(f.map(ReferenceCountUtil.release(_)))
 
   //def auth(password: String): Future[Unit] = unit(send("auth", password))
   def bgrewriteaof(): Future[Unit] = {
@@ -204,7 +252,9 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def slaveOf(host: String, port: Int): Future[IntegerRedisMessage] = {
     send("slaveof", host, port.toString)
   }
-  def slaveOf(host: String, port: Option[Int] = None): Future[IntegerRedisMessage] = {
+  def slaveOf(
+    host: String,
+    port: Option[Int] = None): Future[IntegerRedisMessage] = {
     send("slaveof", host, port.getOrElse(6379).toString)
   }
 
@@ -217,7 +267,8 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def time(): Future[(Long, Int)] = {
     barray(send("time")).map {
       case s if s.length == 2 => s(0).toLong -> s(1).toInt
-      case s                  => throw new IllegalArgumentException("Did not return two valid numbers")
+      case s =>
+        throw new IllegalArgumentException("Did not return two valid numbers")
     }
   }
   def `type`(key: String): Future[String] = {
@@ -232,12 +283,14 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     unit(send("set", key, value))
   }
   def get(key: String): Future[Option[String]] = {
-    bstr(send[FullBulkStringRedisMessage]("get", key)).flatMap {
-      case res if res.nonEmpty => Future.value(Some(res))
-      case res                 => Future.value(None)
-    }.rescue {
-      case t: Throwable => Future.value(None)
-    }
+    bstr(send[FullBulkStringRedisMessage]("get", key))
+      .flatMap {
+        case res if res.nonEmpty => Future.value(Some(res))
+        case res                 => Future.value(None)
+      }
+      .rescue {
+        case t: Throwable => Future.value(None)
+      }
   }
   def del(key: String): Future[Long] = {
     int(send("del", key))
@@ -284,18 +337,39 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def bitPos(key: String, bit: Boolean): Future[Long] = {
     bitPos(key, bit, None, None)
   }
-  def bitPos(key: String, bit: Boolean, start: Long, end: Long): Future[Long] = {
+  def bitPos(
+    key:   String,
+    bit:   Boolean,
+    start: Long,
+    end:   Long): Future[Long] = {
     bitPos(key, bit, Some(start), Some(end))
   }
-  def bitPos(key: String, bit: Boolean, start: Option[Long], end: Option[Long]): Future[Long] = {
-    int(send("bitpos", Seq(key, if (bit) "1" else "0") ++ start.map(_.toString).toList ++ end.map(_.toString).toList))
+  def bitPos(
+    key:   String,
+    bit:   Boolean,
+    start: Option[Long],
+    end:   Option[Long]): Future[Long] = {
+    int(
+      send(
+        "bitpos",
+        Seq(key, if (bit) "1" else "0") ++ start
+          .map(_.toString)
+          .toList ++ end.map(_.toString).toList))
   }
 
-  def bitOp(destination: String, operation: RedisBitOperation.Value, source: String): Future[Long] = {
+  def bitOp(
+    destination: String,
+    operation:   RedisBitOperation.Value,
+    source:      String): Future[Long] = {
     int(send("bitop", operation.toString, destination, source))
   }
-  def bitOp(destination: String, operation: RedisBitOperation.Value, sources: Seq[String]): Future[Long] = {
-    assert(operation != RedisBitOperation.NOT, "BitOp with NOT and multiple sources is not allowed")
+  def bitOp(
+    destination: String,
+    operation:   RedisBitOperation.Value,
+    sources:     Seq[String]): Future[Long] = {
+    assert(
+      operation != RedisBitOperation.NOT,
+      "BitOp with NOT and multiple sources is not allowed")
     int(send("bitop", Seq(operation.toString, destination) ++ sources))
   }
 
@@ -317,7 +391,10 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     bstr(send("echo", key))
   }
 
-  def eval(script: String, numKeys: Int, more: Seq[String]): Future[IntegerRedisMessage] = {
+  def eval(
+    script:  String,
+    numKeys: Int,
+    more:    Seq[String]): Future[IntegerRedisMessage] = {
     send(Seq("eval", script, numKeys.toString) ++ more: _*)
   }
 
@@ -426,7 +503,10 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def sDiff(key: String, keys: Seq[String]): Future[Seq[String]] = {
     barray(send("sdiff", Seq(key) ++ keys))
   }
-  def sDiffStore(destination: String, key: String, keys: Seq[String]): Future[Long] = {
+  def sDiffStore(
+    destination: String,
+    key:         String,
+    keys:        Seq[String]): Future[Long] = {
     int(send("sdiffstore", Seq(destination, key) ++ keys))
   }
   def sInter(key: String, key2: String): Future[Seq[String]] = {
@@ -435,7 +515,10 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def sInter(key: String, keys: Seq[String]): Future[Seq[String]] = {
     barray(send("sinter", Seq(key) ++ keys))
   }
-  def sInterStore(destination: String, key: String, keys: Seq[String]): Future[Long] = {
+  def sInterStore(
+    destination: String,
+    key:         String,
+    keys:        Seq[String]): Future[Long] = {
     int(send("sinterstore", Seq(destination, key) ++ keys))
   }
   def sIsMember(key: String, member: String): Future[Boolean] = {
@@ -444,7 +527,10 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def sMembers(key: String): Future[Seq[String]] = {
     barray(send("smembers", key))
   }
-  def sMove(source: String, destination: String, key: String): Future[Boolean] = {
+  def sMove(
+    source:      String,
+    destination: String,
+    key:         String): Future[Boolean] = {
     int2bool(send("smove", source, destination, key))
   }
   def sPop(key: String): Future[String] = {
@@ -472,11 +558,15 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     send("sscan", key, value)
   }*/
 
-  def lIndex(key: String, index: Long): Future[Option[String]] = bstr(send("lindex", key, index.toString)).flatMap {
-    case res if res.nonEmpty => Future.value(Some(res))
-    case res                 => Future.value(None)
-  }
-  def lInsertBefore(key: String, before: String, value: String): Future[Long] = {
+  def lIndex(key: String, index: Long): Future[Option[String]] =
+    bstr(send("lindex", key, index.toString)).flatMap {
+      case res if res.nonEmpty => Future.value(Some(res))
+      case res                 => Future.value(None)
+    }
+  def lInsertBefore(
+    key:    String,
+    before: String,
+    value:  String): Future[Long] = {
     int(send("linsert", key, "before", before, value))
   }
   def lInsertAfter(key: String, after: String, value: String): Future[Long] = {
@@ -485,10 +575,11 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def lLen(key: String): Future[Long] = {
     int(send("llen", key))
   }
-  def lPop(key: String): Future[Option[String]] = bstr(send("lpop", key)).flatMap {
-    case res if res.nonEmpty => Future.value(Some(res))
-    case res                 => Future.value(None)
-  }
+  def lPop(key: String): Future[Option[String]] =
+    bstr(send("lpop", key)).flatMap {
+      case res if res.nonEmpty => Future.value(Some(res))
+      case res                 => Future.value(None)
+    }
   def lPush(key: String, value: String): Future[Long] = {
     int(send("lpush", key, value))
   }
@@ -511,10 +602,11 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     unit(send("ltrim", key, start.toString, stop.toString))
   }
 
-  def rPop(key: String): Future[Option[String]] = bstr(send("rpop", key)).flatMap {
-    case res if res.nonEmpty => Future.value(Some(res))
-    case res                 => Future.value(None)
-  }
+  def rPop(key: String): Future[Option[String]] =
+    bstr(send("rpop", key)).flatMap {
+      case res if res.nonEmpty => Future.value(Some(res))
+      case res                 => Future.value(None)
+    }
   def rPoplPush(source: String, destination: String): Future[String] = {
     bstr(send("rpoplpush", source, destination))
   }
@@ -572,7 +664,11 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def zAdd(key: String, score: Int, member: String): Future[Double] = {
     zAdd(key, score.toDouble, member, false)
   }
-  def zAdd(key: String, score: Int, member: String, incr: Boolean): Future[Double] = {
+  def zAdd(
+    key:    String,
+    score:  Int,
+    member: String,
+    incr:   Boolean): Future[Double] = {
     zAdd(key, score.toDouble, member, incr)
   }
 
@@ -580,7 +676,11 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     zAdd(key, false, Seq(score -> member))
   }
 
-  def zAdd(key: String, score: Double, member: String, incr: Boolean): Future[Double] = {
+  def zAdd(
+    key:    String,
+    score:  Double,
+    member: String,
+    incr:   Boolean): Future[Double] = {
     zAdd(key, incr, Seq(score -> member))
   }
 
@@ -588,18 +688,25 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     zAdd(key, false, members)
   }
 
-  def zAdd(key: String, incr: Boolean, members: Seq[(Double, String)]): Future[Double] = {
+  def zAdd(
+    key:     String,
+    incr:    Boolean,
+    members: Seq[(Double, String)]): Future[Double] = {
     val args = if (!incr) {
       List(key) ++ members.flatMap(x => x._1.toString :: x._2.toString :: Nil)
     } else {
-      List(key, "INCR") ++ members.flatMap(x => x._1.toString :: x._2.toString :: Nil)
+      List(key, "INCR") ++ members.flatMap(x =>
+        x._1.toString :: x._2.toString :: Nil)
     }
     send[RedisMessage]("zadd", args).flatMap {
-      case a: IntegerRedisMessage        => int(Future.value(a)).map(_.toDouble)
-      case a: FullBulkStringRedisMessage => bstr(Future.value(a)).map(_.toDouble)
+      case a: IntegerRedisMessage => int(Future.value(a)).map(_.toDouble)
+      case a: FullBulkStringRedisMessage =>
+        bstr(Future.value(a)).map(_.toDouble)
       case x =>
         ReferenceCountUtil.release(x)
-        Future.exception(new IllegalArgumentException("%s was not expected here" format x.getClass.getSimpleName))
+        Future.exception(
+          new IllegalArgumentException(
+            "%s was not expected here" format x.getClass.getSimpleName))
     }
   }
   def zCard(key: String): Future[Long] = {
@@ -629,21 +736,55 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     barray(send("zrange", key, start.toString, stop.toString))
   }
 
-  def zRangeByLex(key: String, start: String, stop: String): Future[Seq[String]] = {
+  def zRangeByLex(
+    key:   String,
+    start: String,
+    stop:  String): Future[Seq[String]] = {
     barray(send("zrangebylex", key, start, stop))
   }
-  def zRangeByLex(key: String, start: String, stop: String, limit: Long, offset: Long, count: Long): Future[Seq[String]] = {
-    barray(send("zrangebylex", key, start, stop, limit.toString, offset.toString, count.toString))
+  def zRangeByLex(
+    key:    String,
+    start:  String,
+    stop:   String,
+    limit:  Long,
+    offset: Long,
+    count:  Long): Future[Seq[String]] = {
+    barray(
+      send(
+        "zrangebylex",
+        key,
+        start,
+        stop,
+        limit.toString,
+        offset.toString,
+        count.toString))
   }
 
   def zRangeByScore(key: String): Future[Seq[String]] = {
     barray(send("zrangebyscore", key, "-inf", "+inf"))
   }
-  def zRangeByScore(key: String, min: String, max: String): Future[Seq[String]] = {
+  def zRangeByScore(
+    key: String,
+    min: String,
+    max: String): Future[Seq[String]] = {
     barray(send("zrangebyscore", key, min, max))
   }
-  def zRangeByScore(key: String, min: String, max: String, limit: Long, offset: Long, count: Long): Future[Seq[String]] = {
-    barray(send("zrangebyscore", key, min, max, limit.toString, offset.toString, count.toString))
+  def zRangeByScore(
+    key:    String,
+    min:    String,
+    max:    String,
+    limit:  Long,
+    offset: Long,
+    count:  Long): Future[Seq[String]] = {
+    barray(
+      send(
+        "zrangebyscore",
+        key,
+        min,
+        max,
+        limit.toString,
+        offset.toString,
+        count.toString))
   }
 
   def zRank(key: String, member: String): Future[Long] = {
@@ -651,10 +792,13 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
       case a: IntegerRedisMessage => int(Future.value(a))
       case a: FullBulkStringRedisMessage =>
         ReferenceCountUtil.release(a)
-        Future.exception(new IllegalArgumentException("Key does not exist in sorted set"))
+        Future.exception(
+          new IllegalArgumentException("Key does not exist in sorted set"))
       case x =>
         ReferenceCountUtil.release(x)
-        Future.exception(new IllegalArgumentException("%s was not expected here" format x.getClass.getSimpleName))
+        Future.exception(
+          new IllegalArgumentException(
+            "%s was not expected here" format x.getClass.getSimpleName))
 
     }
   }
@@ -679,21 +823,55 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     barray(send("zrevrange", key, start.toString, stop.toString))
   }
 
-  def zRevRangeByLex(key: String, start: String, stop: String): Future[Seq[String]] = {
+  def zRevRangeByLex(
+    key:   String,
+    start: String,
+    stop:  String): Future[Seq[String]] = {
     barray(send("zrevrangebylex", key, start, stop))
   }
-  def zRevRangeByLex(key: String, start: String, stop: String, limit: Long, offset: Long, count: Long): Future[Seq[String]] = {
-    barray(send("zrevrangebylex", key, start, stop, limit.toString, offset.toString, count.toString))
+  def zRevRangeByLex(
+    key:    String,
+    start:  String,
+    stop:   String,
+    limit:  Long,
+    offset: Long,
+    count:  Long): Future[Seq[String]] = {
+    barray(
+      send(
+        "zrevrangebylex",
+        key,
+        start,
+        stop,
+        limit.toString,
+        offset.toString,
+        count.toString))
   }
 
   def zRevRangeByScore(key: String): Future[Seq[String]] = {
     barray(send("zrevrangebyscore", key, "+inf", "-inf"))
   }
-  def zRevRangeByScore(key: String, min: String, max: String): Future[Seq[String]] = {
+  def zRevRangeByScore(
+    key: String,
+    min: String,
+    max: String): Future[Seq[String]] = {
     barray(send("zrevrangebyscore", key, min, max))
   }
-  def zRevRangeByScore(key: String, min: String, max: String, limit: Long, offset: Long, count: Long): Future[Seq[String]] = {
-    barray(send("zrevrangebyscore", key, min, max, limit.toString, offset.toString, count.toString))
+  def zRevRangeByScore(
+    key:    String,
+    min:    String,
+    max:    String,
+    limit:  Long,
+    offset: Long,
+    count:  Long): Future[Seq[String]] = {
+    barray(
+      send(
+        "zrevrangebyscore",
+        key,
+        min,
+        max,
+        limit.toString,
+        offset.toString,
+        count.toString))
   }
 
   def zRevRank(key: String, member: String): Future[Long] = {
@@ -701,10 +879,13 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
       case a: IntegerRedisMessage => int(Future.value(a))
       case a: FullBulkStringRedisMessage =>
         ReferenceCountUtil.release(a)
-        Future.exception(new IllegalArgumentException("Key does not exist in sorted set"))
+        Future.exception(
+          new IllegalArgumentException("Key does not exist in sorted set"))
       case x =>
         ReferenceCountUtil.release(x)
-        Future.exception(new IllegalArgumentException("%s was not expected here" format x.getClass.getSimpleName))
+        Future.exception(
+          new IllegalArgumentException(
+            "%s was not expected here" format x.getClass.getSimpleName))
 
     }
   }
@@ -719,10 +900,19 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
     send("zscan", key, value)
   }*/
 
-  def geoAdd(key: String, objects: Iterable[RedisGeoObject]): Future[Int] = int(send("geoadd", Seq(key) ++ objects.flatMap(_.toRedis).toSeq)).map(_.toInt)
-  def geoHash(key: String, member: String): Future[String] = barray(send("geohash", key, member)).map(_.head)
-  def geoHash(key: String, members: Seq[String]): Future[Seq[String]] = barray(send("geohash", Seq(key) ++ members))
-  def geoDist(key: String, member1: String, member2: String, unit: RedisDistanceUnit.Value): Future[Double] = bstr(send("geodist", key, member1, member2, unit.toString)).map(_.toDouble)
+  def geoAdd(key: String, objects: Iterable[RedisGeoObject]): Future[Int] =
+    int(send("geoadd", Seq(key) ++ objects.flatMap(_.toRedis).toSeq))
+      .map(_.toInt)
+  def geoHash(key: String, member: String): Future[String] =
+    barray(send("geohash", key, member)).map(_.head)
+  def geoHash(key: String, members: Seq[String]): Future[Seq[String]] =
+    barray(send("geohash", Seq(key) ++ members))
+  def geoDist(
+    key:     String,
+    member1: String,
+    member2: String,
+    unit:    RedisDistanceUnit.Value): Future[Double] =
+    bstr(send("geodist", key, member1, member2, unit.toString)).map(_.toDouble)
   //def geoRadius(key: String, value: String): Future[IntegerRedisMessage] = send("georadius", key, value)
   //def geoRadiusByMember(key: String, value: String): Future[IntegerRedisMessage] = send("georadiusbymember", key, value)
   //def geoPos(key: String, value: String): Future[IntegerRedisMessage] = send("geopos", key, value)
@@ -734,7 +924,7 @@ final case class NettyRedisChannel(out: Broker[RedisMessage], in: Offer[RedisMes
   def pUnsubscribe(key: String, value: String): Future[IntegerRedisMessage] = send("punsubscribe", key, value)
   def subscribe(key: String, value: String): Future[IntegerRedisMessage] = send("subscribe", key, value)
   def unsubscribe(key: String, value: String): Future[IntegerRedisMessage] = send("unsubscribe", key, value)
-  */
+   */
 
   /* We don't like blocking crap. use pubsub*/
   //def blPop(key: String, value: String): Future[IntegerRedisMessage] = send("blpop", key, value)
@@ -778,7 +968,8 @@ final case class NettyRedisCodec()
    *
    * @param channel Channel to apply the Pipeline to
    */
-  def serverPipeline(channel: Channel): Unit = throw new NotImplementedError("Redis Server Codec not implemented")
+  def serverPipeline(channel: Channel): Unit =
+    throw new NotImplementedError("Redis Server Codec not implemented")
 
   /**
    * Sets up basic Redis Pipeline
@@ -800,20 +991,31 @@ final case class NettyRedisCodec()
    * @param uri URI We want to use
    * @return
    */
-  def clientConnected(channel: Channel, uri: java.net.URI): Future[NettyRedisChannel] = {
+  def clientConnected(
+    channel: Channel,
+    uri:     java.net.URI): Future[NettyRedisChannel] = {
     val inBroker = new Broker[RedisMessage]
     val outBroker = new Broker[RedisMessage]
 
-    channel.pipeline().addLast("redisHandler", new SimpleChannelInboundHandler[RedisMessage] {
-      override def channelRead0(ctx: ChannelHandlerContext, msg: RedisMessage): Unit = {
-        // we wire the inbound packet to the Broker
-        inBroker ! ReferenceCountUtil.retain(msg)
-      }
+    channel
+      .pipeline()
+      .addLast(
+        "redisHandler",
+        new SimpleChannelInboundHandler[RedisMessage] {
+          override def channelRead0(
+            ctx: ChannelHandlerContext,
+            msg: RedisMessage): Unit = {
+            // we wire the inbound packet to the Broker
+            inBroker ! ReferenceCountUtil.retain(msg)
+          }
 
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
-        cause.printStackTrace()
-      }
-    })
+          override def exceptionCaught(
+            ctx:   ChannelHandlerContext,
+            cause: Throwable): Unit = {
+            cause.printStackTrace()
+          }
+        }
+      )
 
     // don't overflow the server immediately after handshake
     implicit val timer = WheelTimer
@@ -828,8 +1030,12 @@ final case class NettyRedisCodec()
   }
 }
 
-final case class RedisGeoObject(longitude: Double, latitude: Double, member: String) {
-  private[redis] def toRedis = Seq(longitude.toString, latitude.toString, member)
+final case class RedisGeoObject(
+    longitude: Double,
+    latitude:  Double,
+    member:    String) {
+  private[redis] def toRedis =
+    Seq(longitude.toString, latitude.toString, member)
 }
 
 object RedisBitOperation extends Enumeration {

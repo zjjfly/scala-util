@@ -32,27 +32,37 @@ object ConnectionState extends Enumeration {
  * @param wheelTimer WheelTimer for scheduling
  */
 @Sharable
-class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(implicit val wheelTimer: WheelTimer)
-  extends SimpleChannelInboundHandler[ByteBuf] with Logger { thisService =>
+class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(
+    implicit
+    val wheelTimer: WheelTimer)
+  extends SimpleChannelInboundHandler[ByteBuf]
+  with Logger { thisService =>
   override val loggerName = getClass.getCanonicalName + ":" + params.name
   def addr: InetSocketAddress = if (params.sandbox) sandbox else production
 
   private final val production = {
-    new java.net.InetSocketAddress(java.net.InetAddress.getByName("gateway.push.apple.com"), 2195)
+    new java.net.InetSocketAddress(
+      java.net.InetAddress.getByName("gateway.push.apple.com"),
+      2195)
   }
   private final val sandbox = {
-    new java.net.InetSocketAddress(java.net.InetAddress.getByName("gateway.sandbox.push.apple.com"), 2195)
+    new java.net.InetSocketAddress(
+      java.net.InetAddress.getByName("gateway.sandbox.push.apple.com"),
+      2195)
   }
 
   private val srv = new Bootstrap()
-  private val bootstrap = srv.group(eventLoop)
+  private val bootstrap = srv
+    .group(eventLoop)
     .channel(classOf[NioSocketChannel])
     .remoteAddress(addr)
     .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
     .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
     .option[java.lang.Boolean](ChannelOption.SO_REUSEADDR, true)
     .option[java.lang.Integer](ChannelOption.SO_LINGER, 0)
-    .option[java.lang.Integer](ChannelOption.CONNECT_TIMEOUT_MILLIS, params.timeout * 1000)
+    .option[java.lang.Integer](
+      ChannelOption.CONNECT_TIMEOUT_MILLIS,
+      params.timeout * 1000)
     .handler(new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel) {
         val p = ch.pipeline()
@@ -92,7 +102,8 @@ class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(i
   /* reference to channel and state */
   private val ping = new AtomicReference[Option[Schedule.Action]](None)
   private val channel = new AtomicReference[Option[Channel]](None)
-  private val state = new AtomicReference[ConnectionState.Value](ConnectionState.fresh)
+  private val state =
+    new AtomicReference[ConnectionState.Value](ConnectionState.fresh)
   def connectionState = state.get
 
   /**
@@ -106,7 +117,16 @@ class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(i
       Schedule.once(() => connect(), 5.seconds)
     } else {
       state.set(ConnectionState.connected)
-      ping.set(Some(Schedule.again(() => channel.get.foreach { case chan if !chan.isActive => reconnect() case _ => }, 5.seconds, 5.seconds)))
+      ping.set(
+        Some(
+          Schedule.again(
+            () =>
+            channel.get.foreach {
+              case chan if !chan.isActive => reconnect()
+              case _                      =>
+            },
+            5.seconds,
+            5.seconds)))
     }
   }
 
@@ -134,7 +154,8 @@ class PushService(params: Params, eventLoop: EventLoopGroup = Netty.eventLoop)(i
    * Delivery messages to Apple Push Servers.
    */
   private def deliverQueued(): Unit = Future {
-    if (!flushing.compareAndSet(false, true) && state.get == ConnectionState.connected && !queued.isEmpty) {
+    if (!flushing
+      .compareAndSet(false, true) && state.get == ConnectionState.connected && !queued.isEmpty) {
       channel.get.foreach(write)
       flushing.set(false)
     }

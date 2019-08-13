@@ -10,7 +10,9 @@ class ConfigSpec extends WordSpec {
   val ourBool = true
   val ourString = "chicken"
   val ourList = List("foo", "bar", "baz")
-  val ourAddrs = List(new InetSocketAddress("127.0.0.1", 8080), new InetSocketAddress("::", 8081))
+  val ourAddrs = List(
+    new InetSocketAddress("127.0.0.1", 8080),
+    new InetSocketAddress("::", 8081))
 
   "Preset Integer (" + ourInt + ")" should {
     val testVal = Config.getInt("test.int")
@@ -70,15 +72,17 @@ class ConfigSpec extends WordSpec {
       assert(Config.getStringList("foo").isEmpty)
     }
     "for String-List be Some(List(\"bar\", \"baz\")) if a default-value was given" in {
-      assert(Config.getStringList("foo", List("bar", "baz")) == List("bar", "baz"))
+      assert(
+        Config.getStringList("foo", List("bar", "baz")) == List("bar", "baz"))
     }
     "for InetSocketAddress-List be the None if no default-value was given" in {
       assert(Config.getInetAddrList("foo").isEmpty)
     }
     "for InetSocketAddress-List be Some(InetSocketAddress(\"1.2.3.4\", 80)) if a default-value was given" in {
-      assert(Config.getInetAddrList("foo", List("1.2.3.4:80")) == List(new java.net.InetSocketAddress("1.2.3.4", 80)))
+      assert(
+        Config.getInetAddrList("foo", List("1.2.3.4:80")) == List(
+          new java.net.InetSocketAddress("1.2.3.4", 80)))
     }
   }
 
 }
-

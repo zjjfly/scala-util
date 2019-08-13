@@ -10,7 +10,9 @@ import io.netty.util.CharsetUtil
  * @param token HTTP Server token
  * @param allocator ByteBuf Allocator
  */
-class HttpResponder(token: String, allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) {
+class HttpResponder(
+    token:     String,
+    allocator: ByteBufAllocator = PooledByteBufAllocator.DEFAULT) {
   def apply(
     status:    HttpResponseStatus,
     body:      Option[String]      = None,
@@ -32,9 +34,13 @@ class HttpResponder(token: String, allocator: ByteBufAllocator = PooledByteBufAl
 
     mime.map(res.headers.set(HttpHeaderNames.CONTENT_TYPE, _))
     res.headers.set(HttpHeaderNames.SERVER, token)
-    headers.foreach { h => res.headers.set(h._1, h._2) }
+    headers.foreach { h =>
+      res.headers.set(h._1, h._2)
+    }
 
-    res.headers.set(HttpHeaderNames.CONNECTION, if (!keepAlive) HttpHeaderValues.CLOSE else HttpHeaderValues.KEEP_ALIVE)
+    res.headers.set(
+      HttpHeaderNames.CONNECTION,
+      if (!keepAlive) HttpHeaderValues.CLOSE else HttpHeaderValues.KEEP_ALIVE)
     res.retain()
   }
 }

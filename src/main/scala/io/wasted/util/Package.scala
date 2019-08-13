@@ -30,7 +30,8 @@ package object util {
   implicit val implicitStackTraceToString = stackTraceToString _
 
   implicit val durationScala2Twitter: SD => TD = (sd) => TD(sd.length, sd.unit)
-  implicit val durationTwitter2Scala: TD => SD = (td) => SD(td.inTimeUnit._1, td.inTimeUnit._2)
+  implicit val durationTwitter2Scala: TD => SD = (td) =>
+    SD(td.inTimeUnit._1, td.inTimeUnit._2)
 
   implicit val channelFutureListener: (ChannelFuture => Any) => ChannelFutureListener = { pf =>
     new ChannelFutureListener {
@@ -44,16 +45,19 @@ package object util {
   }
 
   implicit class OurSslBuilder(val builder: SslContextBuilder) extends AnyVal {
-    def keyManager(store: InputStream, secret: String, keyStoreType: KeyStoreType.Value): SslContextBuilder = {
+    def keyManager(
+      store:        InputStream,
+      secret:       String,
+      keyStoreType: KeyStoreType.Value): SslContextBuilder = {
       val secretArray = secret.toCharArray
       val ks = KeyStore.getInstance(keyStoreType.toString)
       ks.load(store, secretArray)
 
-      val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
+      val kmf =
+        KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
       kmf.init(ks, secretArray)
 
       builder.keyManager(kmf)
     }
   }
 }
-

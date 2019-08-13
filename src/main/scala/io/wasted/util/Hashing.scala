@@ -24,7 +24,10 @@ object Hashing {
     val secret = new SecretKeySpec(key.toCharArray.map(_.toByte), alg.name)
     mac.init(secret)
     // catch (InvalidKeyException e)
-    mac.doFinal(payload.toCharArray.map(_.toByte)).map(b => Integer.toString((b & 0xff) + 0x100, 16).substring(1)).mkString
+    mac
+      .doFinal(payload.toCharArray.map(_.toByte))
+      .map(b => Integer.toString((b & 0xff) + 0x100, 16).substring(1))
+      .mkString
   }
 
   /**
@@ -48,7 +51,10 @@ object Hashing {
     val md = MessageDigest.getInstance(alg.name)
     val input = new FileInputStream(file)
     val buffer = new Array[Byte](1024)
-    Stream.continually(input.read(buffer)).takeWhile(_ != -1).foreach(md.update(buffer, 0, _))
+    Stream
+      .continually(input.read(buffer))
+      .takeWhile(_ != -1)
+      .foreach(md.update(buffer, 0, _))
     hexEncode(md.digest)
   }
 
@@ -65,8 +71,12 @@ object Hashing {
         val b: Int = in(pos)
         val msb = (b & 0xf0) >> 4
         val lsb = b & 0x0f
-        sb.append(if (msb < 10) ('0' + msb).asInstanceOf[Char] else ('a' + (msb - 10)).asInstanceOf[Char])
-        sb.append(if (lsb < 10) ('0' + lsb).asInstanceOf[Char] else ('a' + (lsb - 10)).asInstanceOf[Char])
+        sb.append(
+          if (msb < 10) ('0' + msb).asInstanceOf[Char]
+          else ('a' + (msb - 10)).asInstanceOf[Char])
+        sb.append(
+          if (lsb < 10) ('0' + lsb).asInstanceOf[Char]
+          else ('a' + (lsb - 10)).asInstanceOf[Char])
 
         addDigit(in, pos + 1, len, sb)
       }

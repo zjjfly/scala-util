@@ -11,18 +11,24 @@ class ScheduleSpec extends WordSpec with AsyncAssertions {
 
   var result2 = false
   var result3 = false
-  var testfunc2 = () => if (result2) {
-    result3 = true
-    w.dismiss()
-  } else {
-    result2 = true
-    w.dismiss()
-  }
-  val cancelAgain = Schedule.again(testfunc2, scala.concurrent.duration.DurationInt(5).millis, scala.concurrent.duration.DurationInt(5).millis)
+  var testfunc2 = () =>
+    if (result2) {
+      result3 = true
+      w.dismiss()
+    } else {
+      result2 = true
+      w.dismiss()
+    }
+  val cancelAgain = Schedule.again(
+    testfunc2,
+    scala.concurrent.duration.DurationInt(5).millis,
+    scala.concurrent.duration.DurationInt(5).millis)
 
   "Schedule should have done 3 tests where results" should {
     "be true for Schedule.once" in {
-      Schedule.once(() => w.dismiss(), scala.concurrent.duration.DurationInt(5).millis)
+      Schedule.once(
+        () => w.dismiss(),
+        scala.concurrent.duration.DurationInt(5).millis)
       w.await(timeout(500 millis), dismissals(2))
     }
     "be true for Schedule.again (first run)" in {
@@ -35,4 +41,3 @@ class ScheduleSpec extends WordSpec with AsyncAssertions {
     }
   }
 }
-

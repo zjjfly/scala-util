@@ -8,11 +8,14 @@ class TryoSpec extends WordSpec {
   val tryoFailure = Tryo(throw new IllegalArgumentException)
 
   "Tryo(throw new IllegalArgumentException)" should {
-    "have thrown an Exception and returned None" in { assert(tryoFailure.isEmpty) }
+    "have thrown an Exception and returned None" in {
+      assert(tryoFailure.isEmpty)
+    }
   }
 
   "Tryo(\"success!\")" should {
-    "have also a result containing 'success!'" in { assert(tryoSuccess.contains("success!")) }
+    "have also a result containing 'success!'" in {
+      assert(tryoSuccess.contains("success!"))
+    }
   }
 }
-

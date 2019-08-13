@@ -10,7 +10,10 @@ import io.wasted.util._
 
 object HttpServer {
   private[http] val defaultHandler: (Channel, Future[HttpMessage]) => Future[HttpResponse] = { (ch, msg) =>
-    Future.value(new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND))
+    Future.value(
+      new DefaultHttpResponse(
+        HttpVersion.HTTP_1_1,
+        HttpResponseStatus.NOT_FOUND))
   }
 
   val closeListener = new ChannelFutureListener {
@@ -62,52 +65,73 @@ final case class HttpServer[Req <: HttpMessage, Resp <: HttpResponse](
     childLoop:           EventLoopGroup                         = Netty.eventLoop,
     customPipeline:      Channel => Unit                        = p => (),
     handle:              (Channel, Future[Req]) => Future[Resp] = HttpServer.defaultHandler)
-  extends NettyServerBuilder[HttpServer[Req, Resp], Req, Resp] with Logger {
+  extends NettyServerBuilder[HttpServer[Req, Resp], Req, Resp]
+  with Logger {
 
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)
-  def withTcpNoDelay(tcpNoDelay: Boolean) = copy[Req, Resp](tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
+  def withTcpNoDelay(tcpNoDelay: Boolean) =
+    copy[Req, Resp](tcpNoDelay = tcpNoDelay)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy[Req, Resp](reuseAddr = reuseAddr)
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy[Req, Resp](tcpConnectTimeout = tcpConnectTimeout)
-  def withPipeline(pipeline: (Channel) => Unit) = copy[Req, Resp](customPipeline = pipeline)
-  def handler(handle: (Channel, Future[Req]) => Future[Resp]) = copy[Req, Resp](handle = handle)
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy[Req, Resp](tcpConnectTimeout = tcpConnectTimeout)
+  def withPipeline(pipeline: (Channel) => Unit) =
+    copy[Req, Resp](customPipeline = pipeline)
+  def handler(handle: (Channel, Future[Req]) => Future[Resp]) =
+    copy[Req, Resp](handle = handle)
 
-  def withEventLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = eventLoop, childLoop = eventLoop)
-  def withEventLoop(parentLoop: EventLoopGroup, childLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = parentLoop, childLoop = childLoop)
-  def withChildLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](childLoop = eventLoop)
-  def withParentLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = eventLoop)
+  def withEventLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = eventLoop, childLoop = eventLoop)
+  def withEventLoop(parentLoop: EventLoopGroup, childLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = parentLoop, childLoop = childLoop)
+  def withChildLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](childLoop = eventLoop)
+  def withParentLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = eventLoop)
 
   val pipeline: Channel => Unit = (channel: Channel) => {
     customPipeline(channel)
-    channel.pipeline().addLast(HttpServer.Handlers.handler, new SimpleChannelInboundHandler[Req] {
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        error(cause.getMessage)
-        debug(cause)
-        handle(ctx.channel(), Future.exception(cause))
-      }
+    channel
+      .pipeline()
+      .addLast(
+        HttpServer.Handlers.handler,
+        new SimpleChannelInboundHandler[Req] {
+          override def exceptionCaught(
+            ctx:   ChannelHandlerContext,
+            cause: Throwable) {
+            error(cause.getMessage)
+            debug(cause)
+            handle(ctx.channel(), Future.exception(cause))
+          }
 
-      def channelRead0(ctx: ChannelHandlerContext, req: Req) {
-        ReferenceCountUtil.retain(req)
-        handle(ctx.channel(), Future.value(req)).rescue {
-          case t =>
-            error(t.getMessage)
-            debug(t)
-            val resp = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.INTERNAL_SERVER_ERROR)
-            Future.value(resp)
-        }.map {
-          case resp: HttpResponse =>
-            val ka = {
-              if (HttpUtil.isKeepAlive(req)) HttpHeaderValues.KEEP_ALIVE
-              else HttpHeaderValues.CLOSE
-            }
-            resp.headers().set(HttpHeaderNames.CONNECTION, ka)
-            val written = ctx.channel().writeAndFlush(resp)
-            if (!HttpUtil.isKeepAlive(req)) written.addListener(HttpServer.closeListener)
-          case resp => ctx.channel().writeAndFlush(resp)
-        } ensure (ReferenceCountUtil.release(req))
-      }
-    })
+          def channelRead0(ctx: ChannelHandlerContext, req: Req) {
+            ReferenceCountUtil.retain(req)
+            handle(ctx.channel(), Future.value(req))
+              .rescue {
+                case t =>
+                  error(t.getMessage)
+                  debug(t)
+                  val resp = new DefaultHttpResponse(
+                    HttpVersion.HTTP_1_1,
+                    HttpResponseStatus.INTERNAL_SERVER_ERROR)
+                  Future.value(resp)
+              }
+              .map {
+                case resp: HttpResponse =>
+                  val ka = {
+                    if (HttpUtil.isKeepAlive(req)) HttpHeaderValues.KEEP_ALIVE
+                    else HttpHeaderValues.CLOSE
+                  }
+                  resp.headers().set(HttpHeaderNames.CONNECTION, ka)
+                  val written = ctx.channel().writeAndFlush(resp)
+                  if (!HttpUtil.isKeepAlive(req))
+                    written.addListener(HttpServer.closeListener)
+                case resp => ctx.channel().writeAndFlush(resp)
+              } ensure (ReferenceCountUtil.release(req))
+          }
+        }
+      )
   }
 
 }
-

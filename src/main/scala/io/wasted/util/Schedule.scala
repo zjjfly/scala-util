@@ -8,7 +8,10 @@ import io.netty.util.{ Timeout, TimerTask }
 import scala.concurrent.duration.Duration
 
 class WheelTimer(timerMillis: Int, wheelSize: Int)
-  extends io.netty.util.HashedWheelTimer(timerMillis.toLong, TimeUnit.MILLISECONDS, wheelSize) {
+  extends io.netty.util.HashedWheelTimer(
+    timerMillis.toLong,
+    TimeUnit.MILLISECONDS,
+    wheelSize) {
   lazy val twitter = new JavaTimer()
 }
 
@@ -29,8 +32,13 @@ object Schedule extends Logger {
     def run(timeout: Timeout): Unit = func()
   }
 
-  private def repeatFunc(id: Long, func: () => Any, delay: Duration)(implicit timer: WheelTimer): () => Any = () => {
-    val to = timer.newTimeout(task(repeatFunc(id, func, delay)), delay.length, delay.unit)
+  private def repeatFunc(id: Long, func: () => Any, delay: Duration)(
+    implicit
+    timer: WheelTimer): () => Any = () => {
+    val to = timer.newTimeout(
+      task(repeatFunc(id, func, delay)),
+      delay.length,
+      delay.unit)
     repeatTimers.put(id, to)
     func()
   }
@@ -42,10 +50,15 @@ object Schedule extends Logger {
    * @param initialDelay Initial delay before first firing
    * @param delay Optional delay to be used if it is to be rescheduled (again)
    */
-  def apply(func: () => Any, initialDelay: Duration, delay: Option[Duration] = None)(implicit timer: WheelTimer): Action =
+  def apply(
+    func:         () => Any,
+    initialDelay: Duration,
+    delay:        Option[Duration] = None)(implicit timer: WheelTimer): Action =
     delay match {
       case Some(d) => apply(func, initialDelay, d)
-      case None    => new Action(Some(timer.newTimeout(task(func), initialDelay.length, initialDelay.unit)))
+      case None =>
+        new Action(Some(
+          timer.newTimeout(task(func), initialDelay.length, initialDelay.unit)))
     }
 
   /**
@@ -55,9 +68,14 @@ object Schedule extends Logger {
    * @param initialDelay Initial delay before first firing
    * @param delay Delay to be called after the first firing
    */
-  def apply(func: () => Any, initialDelay: Duration, delay: Duration)(implicit timer: WheelTimer): Action = {
+  def apply(func: () => Any, initialDelay: Duration, delay: Duration)(
+    implicit
+    timer: WheelTimer): Action = {
     val action = new Action(None)
-    val to = timer.newTimeout(task(repeatFunc(action.id, func, delay)), initialDelay.length, initialDelay.unit)
+    val to = timer.newTimeout(
+      task(repeatFunc(action.id, func, delay)),
+      initialDelay.length,
+      initialDelay.unit)
     repeatTimers.put(action.id, to)
     action
   }
@@ -68,7 +86,9 @@ object Schedule extends Logger {
    * @param func Function to be scheduled
    * @param initialDelay Initial delay before first firing
    */
-  def once(func: () => Any, initialDelay: Duration)(implicit timer: WheelTimer): Action = apply(func, initialDelay)
+  def once(func: () => Any, initialDelay: Duration)(
+    implicit
+    timer: WheelTimer): Action = apply(func, initialDelay)
 
   /**
    * Schedule an event over and over again.
@@ -77,7 +97,9 @@ object Schedule extends Logger {
    * @param initialDelay Initial delay before first firing
    * @param delay Delay to be called after the first firing
    */
-  def again(func: () => Any, initialDelay: Duration, delay: Duration)(implicit timer: WheelTimer): Action = apply(func, initialDelay, delay)
+  def again(func: () => Any, initialDelay: Duration, delay: Duration)(
+    implicit
+    timer: WheelTimer): Action = apply(func, initialDelay, delay)
 
   /**
    * This is a proxy-class, which works around the rescheduling issue.

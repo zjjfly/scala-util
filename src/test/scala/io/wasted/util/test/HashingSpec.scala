@@ -9,7 +9,8 @@ class HashingSpec extends WordSpec {
 
   val ourString = "this must work!!"
   val ourHexDigest = "c2bf26e94cab462fa275a3dc41f04cf3e67d470a"
-  val ourSignature = "6efac23cabff39ec218e18a7a2494591095e74913ada965fbf8ad9d9b9f38d91"
+  val ourSignature =
+    "6efac23cabff39ec218e18a7a2494591095e74913ada965fbf8ad9d9b9f38d91"
   val ourHexSignature = "this works?!"
 
   val theirHexDigest = Hashing.hexDigest(ourString.getBytes("UTF-8"))
@@ -24,7 +25,10 @@ class HashingSpec extends WordSpec {
 
   "Precalculated hex-encoded (" + ourHexSignature + ")" should {
     "be the same as the calculated (" + theirHexSignature + ")" in {
-      assert(ourHexSignature == new String(Hashing.hexDecode(theirHexSignature), "UTF-8"))
+      assert(
+        ourHexSignature == new String(
+          Hashing.hexDecode(theirHexSignature),
+          "UTF-8"))
     }
   }
 
@@ -34,4 +38,3 @@ class HashingSpec extends WordSpec {
     }
   }
 }
-

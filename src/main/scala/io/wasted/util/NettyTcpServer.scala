@@ -42,17 +42,25 @@ case class NettyTcpServer[Req, Resp](
   extends NettyServerBuilder[NettyTcpServer[Req, Resp], Req, Resp] {
 
   def withSoLinger(soLinger: Int) = copy[Req, Resp](soLinger = soLinger)
-  def withTcpNoDelay(tcpNoDelay: Boolean) = copy[Req, Resp](tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
+  def withTcpNoDelay(tcpNoDelay: Boolean) =
+    copy[Req, Resp](tcpNoDelay = tcpNoDelay)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy[Req, Resp](tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy[Req, Resp](reuseAddr = reuseAddr)
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy[Req, Resp](tcpConnectTimeout = tcpConnectTimeout)
-  def withPipeline(pipeline: (Channel) => Unit) = copy[Req, Resp](pipeline = pipeline)
-  def handler(handle: (Channel, Future[Req]) => Future[Resp]) = copy[Req, Resp](handle = handle)
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy[Req, Resp](tcpConnectTimeout = tcpConnectTimeout)
+  def withPipeline(pipeline: (Channel) => Unit) =
+    copy[Req, Resp](pipeline = pipeline)
+  def handler(handle: (Channel, Future[Req]) => Future[Resp]) =
+    copy[Req, Resp](handle = handle)
 
-  def withEventLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = eventLoop, childLoop = eventLoop)
-  def withEventLoop(parentLoop: EventLoopGroup, childLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = parentLoop, childLoop = childLoop)
-  def withChildLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](childLoop = eventLoop)
-  def withParentLoop(eventLoop: EventLoopGroup) = copy[Req, Resp](parentLoop = eventLoop)
+  def withEventLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = eventLoop, childLoop = eventLoop)
+  def withEventLoop(parentLoop: EventLoopGroup, childLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = parentLoop, childLoop = childLoop)
+  def withChildLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](childLoop = eventLoop)
+  def withParentLoop(eventLoop: EventLoopGroup) =
+    copy[Req, Resp](parentLoop = eventLoop)
 
 }
-

@@ -35,27 +35,35 @@ final case class WebSocketClient(
     tcpNoDelay:        Boolean                 = true,
     soLinger:          Int                     = 0,
     retries:           Int                     = 0,
-    eventLoop:         EventLoopGroup          = Netty.eventLoop)(implicit wheelTimer: WheelTimer)
+    eventLoop:         EventLoopGroup          = Netty.eventLoop)(
+    implicit
+    wheelTimer: WheelTimer)
   extends NettyClientBuilder[java.net.URI, NettyWebSocketChannel] {
 
-  def withExtensions(allowExtensions: Boolean) = copy(allowExtensions = allowExtensions)
+  def withExtensions(allowExtensions: Boolean) =
+    copy(allowExtensions = allowExtensions)
   def withSubprotocols(subprotocols: String) = copy(subprotocols = subprotocols)
   def withSpecifics(codec: NettyWebSocketCodec) = copy(codec = codec)
   def withSoLinger(soLinger: Int) = copy(soLinger = soLinger)
   def withTcpNoDelay(tcpNoDelay: Boolean) = copy(tcpNoDelay = tcpNoDelay)
-  def withTcpKeepAlive(tcpKeepAlive: Boolean) = copy(tcpKeepAlive = tcpKeepAlive)
+  def withTcpKeepAlive(tcpKeepAlive: Boolean) =
+    copy(tcpKeepAlive = tcpKeepAlive)
   def withReuseAddr(reuseAddr: Boolean) = copy(reuseAddr = reuseAddr)
-  def withTcpConnectTimeout(tcpConnectTimeout: Duration) = copy(tcpConnectTimeout = Some(tcpConnectTimeout))
+  def withTcpConnectTimeout(tcpConnectTimeout: Duration) =
+    copy(tcpConnectTimeout = Some(tcpConnectTimeout))
   def withEventLoop(eventLoop: EventLoopGroup) = copy(eventLoop = eventLoop)
   def withRetries(retries: Int) = copy(retries = retries)
-  def connectTo(host: String, port: Int) = copy(remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
+  def connectTo(host: String, port: Int) =
+    copy(
+      remote = List(new InetSocketAddress(InetAddress.getByName(host), port)))
   def connectTo(hosts: List[InetSocketAddress]) = copy(remote = hosts)
 
   private[this] def connect(): Future[NettyWebSocketChannel] = {
     val rand = scala.util.Random.nextInt(remote.length)
     val host = remote(rand)
     val proto = if (codec.sslCtx.isEmpty) "ws" else "wss"
-    val uri = new java.net.URI(proto + "://" + host.getHostString + ":" + host.getPort)
+    val uri =
+      new java.net.URI(proto + "://" + host.getHostString + ":" + host.getPort)
     write(uri, uri)
   }
 
@@ -63,9 +71,12 @@ final case class WebSocketClient(
     connect()
   }
 
-  protected def getPort(url: java.net.URI): Int = if (url.getPort > 0) url.getPort else url.getScheme match {
-    case "http"  => 80
-    case "https" => 443
-  }
+  protected def getPort(url: java.net.URI): Int =
+    if (url.getPort > 0) url.getPort
+    else
+      url.getScheme match {
+        case "http"  => 80
+        case "https" => 443
+      }
 
 }

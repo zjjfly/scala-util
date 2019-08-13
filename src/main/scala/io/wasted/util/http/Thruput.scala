@@ -46,7 +46,8 @@ class Thruput(
     val callback: (ByteBufHolder) => Any       = (x) => x.release,
     states:       (Thruput.State.Value) => Any = (x) => x,
     timeout:      Int                          = 5,
-    engine:       Option[SSLEngine]            = None) extends Wactor(100000) {
+    engine:       Option[SSLEngine]            = None)
+  extends Wactor(100000) {
   TP =>
   override val loggerName = getClass.getCanonicalName + ":" + uri.toString + auth
   private def session = UUID.randomUUID
@@ -55,7 +56,8 @@ class Thruput(
   private var disconnected = false
   private var connecting = false
   private var reconnecting = false
-  private val _state = new AtomicReference[Thruput.State.Value](Thruput.State.Disconnected)
+  private val _state =
+    new AtomicReference[Thruput.State.Value](Thruput.State.Disconnected)
   def state = _state.get()
 
   private def setState(state: Thruput.State.Value): Unit = {
@@ -63,14 +65,17 @@ class Thruput(
     states(state)
   }
 
-  private val bootstrap = new Bootstrap().group(Netty.eventLoop)
+  private val bootstrap = new Bootstrap()
+    .group(Netty.eventLoop)
     .channel(classOf[NioSocketChannel])
     .remoteAddress(new InetSocketAddress(uri.getHost, uri.getPort))
     .option[java.lang.Boolean](ChannelOption.TCP_NODELAY, true)
     .option[java.lang.Boolean](ChannelOption.SO_KEEPALIVE, true)
     .option[java.lang.Boolean](ChannelOption.SO_REUSEADDR, true)
     .option[java.lang.Integer](ChannelOption.SO_LINGER, 0)
-    .option[java.lang.Integer](ChannelOption.CONNECT_TIMEOUT_MILLIS, timeout * 1000)
+    .option[java.lang.Integer](
+      ChannelOption.CONNECT_TIMEOUT_MILLIS,
+      timeout * 1000)
     .handler(new ChannelInitializer[SocketChannel] {
       override def initChannel(ch: SocketChannel) {
         val p = ch.pipeline()
@@ -113,12 +118,23 @@ class Thruput(
             handshakeFuture.sync()
 
             val body = (room, from) match {
-              case (Some(uroom), Some(ufrom)) => """{"room":"%s","thruput":true,"from":"%s"}""".format(uroom, ufrom)
-              case (_, Some(ufrom))           => """{"from":"%s","thruput":true}""".format(ufrom)
-              case _                          => """{"thruput":true}"""
+              case (Some(uroom), Some(ufrom)) =>
+                """{"room":"%s","thruput":true,"from":"%s"}""".format(
+                  uroom,
+                  ufrom)
+              case (_, Some(ufrom)) =>
+                """{"from":"%s","thruput":true}""".format(ufrom)
+              case _ => """{"thruput":true}"""
             }
-            writeToChannel(ch, new TextWebSocketFrame("""{"auth":"%s","sign":"%s","body":%s,"session":"%s"}""".format(
-              auth.toString, io.wasted.util.Hashing.sign(sign.toString, body), body, session.toString)))
+            writeToChannel(
+              ch,
+              new TextWebSocketFrame(
+                """{"auth":"%s","sign":"%s","body":%s,"session":"%s"}""".format(
+                  auth.toString,
+                  io.wasted.util.Hashing.sign(sign.toString, body),
+                  body,
+                  session.toString))
+            )
             ch
           } match {
             case Success(ch) =>
@@ -165,17 +181,18 @@ class Thruput(
     case action: Action => action.run()
     case msg: WebSocketFrame =>
       if (reconnecting || disconnected || connecting) TP ! msg
-      else channel match {
-        case Some(ch) =>
-          Try(writeToChannel(ch, msg)) match {
-            case Success(f) =>
-            case Failure(e) =>
-              TP ! msg
-          }
-        case _ =>
-          connect()
-          TP ! msg
-      }
+      else
+        channel match {
+          case Some(ch) =>
+            Try(writeToChannel(ch, msg)) match {
+              case Success(f) =>
+              case Failure(e) =>
+                TP ! msg
+            }
+          case _ =>
+            connect()
+            TP ! msg
+        }
   }
 
   /**
@@ -222,8 +239,14 @@ class Thruput(
 /**
  * Empty Netty Response Adapter which is used for Thruput high-performance delivery.
  */
-class ThruputResponseAdapter(uri: URI, client: Thruput) extends SimpleChannelInboundHandler[Object] {
-  private val handshaker = WebSocketClientHandshakerFactory.newHandshaker(uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders())
+class ThruputResponseAdapter(uri: URI, client: Thruput)
+  extends SimpleChannelInboundHandler[Object] {
+  private val handshaker = WebSocketClientHandshakerFactory.newHandshaker(
+    uri,
+    WebSocketVersion.V13,
+    null,
+    false,
+    new DefaultHttpHeaders())
 
   override def handlerAdded(ctx: ChannelHandlerContext) {
     client.handshakeFuture = ctx.newPromise()
@@ -247,7 +270,11 @@ class ThruputResponseAdapter(uri: URI, client: Thruput) extends SimpleChannelInb
         client.info("WebSocket Client connected!")
         client.handshakeFuture.setSuccess()
       case response: FullHttpResponse =>
-        throw new Exception("Unexpected FullHttpResponse (status=" + response.status() + ", content=" + response.content().toString(CharsetUtil.UTF_8) + ")")
+        throw new Exception(
+          "Unexpected FullHttpResponse (status=" + response
+            .status() + ", content=" + response
+            .content()
+            .toString(CharsetUtil.UTF_8) + ")")
       case frame: BinaryWebSocketFrame =>
         client.debug("WebSocket BinaryFrame received message")
         client.callback(frame.retain)

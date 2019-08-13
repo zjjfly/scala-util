@@ -6,7 +6,8 @@ import org.scalatest._
 class Base64Spec extends WordSpec {
   val ourString = "it works!"
   val ourB64 = "aXQgd29ya3Mh"
-  val ourB64Array = Array(97, 88, 81, 103, 100, 50, 57, 121, 97, 51, 77, 104).map(_.toByte)
+  val ourB64Array =
+    Array(97, 88, 81, 103, 100, 50, 57, 121, 97, 51, 77, 104).map(_.toByte)
 
   val theirB64 = Base64.encodeString(ourString)
   val theirB64Array = Base64.encodeBinary(ourString)
@@ -31,4 +32,3 @@ class Base64Spec extends WordSpec {
   }
 
 }
-

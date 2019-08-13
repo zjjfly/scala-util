@@ -20,7 +20,10 @@ object LruMap {
   def apply[K, V](maxSize: Int, expire: (K, V) => Any): LruMap[K, V] =
     new LruMap[K, V](maxSize, None, Some(expire))
 
-  def apply[K, V](maxSize: Int, load: (K) => V, expire: (K, V) => Any): LruMap[K, V] =
+  def apply[K, V](
+    maxSize: Int,
+    load:    (K) => V,
+    expire:  (K, V) => Any): LruMap[K, V] =
     new LruMap[K, V](maxSize, Some(load), Some(expire))
 }
 
@@ -36,18 +39,23 @@ class LruMap[K, V](
     val maxSize: Int,
     load:        Option[(K) => V],
     expire:      Option[(K, V) => Any],
-    builderConf: Option[CacheBuilder[AnyRef, AnyRef] => CacheBuilder[AnyRef, AnyRef]] = None) { lru =>
-  private[this] val loader: Option[CacheLoader[KeyHolder[K], ValueHolder[V]]] = lru.load.map { loadFunc =>
-    new CacheLoader[KeyHolder[K], ValueHolder[V]] {
-      def load(key: KeyHolder[K]): ValueHolder[V] = ValueHolder(loadFunc(key.key))
+    builderConf: Option[CacheBuilder[AnyRef, AnyRef] => CacheBuilder[AnyRef, AnyRef]] = None) {
+  lru =>
+  private[this] val loader: Option[CacheLoader[KeyHolder[K], ValueHolder[V]]] =
+    lru.load.map { loadFunc =>
+      new CacheLoader[KeyHolder[K], ValueHolder[V]] {
+        def load(key: KeyHolder[K]): ValueHolder[V] =
+          ValueHolder(loadFunc(key.key))
+      }
     }
-  }
 
-  private[this] val removal: Option[RemovalListener[KeyHolder[K], ValueHolder[V]]] = lru.expire.map { expireFunc =>
-    new RemovalListener[KeyHolder[K], ValueHolder[V]] {
-      def onRemoval(removal: RemovalNotification[KeyHolder[K], ValueHolder[V]]): Unit =
-        expireFunc(removal.getKey.key, removal.getValue.value)
-    }
+  private[this] val removal: Option[RemovalListener[KeyHolder[K], ValueHolder[V]]] = lru.expire.map {
+    expireFunc =>
+      new RemovalListener[KeyHolder[K], ValueHolder[V]] {
+        def onRemoval(
+          removal: RemovalNotification[KeyHolder[K], ValueHolder[V]]): Unit =
+          expireFunc(removal.getKey.key, removal.getValue.value)
+      }
   }
 
   /**
@@ -57,10 +65,11 @@ class LruMap[K, V](
     val builder = CacheBuilder.newBuilder().maximumSize(maxSize)
     builderConf.map(_(builder))
     (loader, removal) match {
-      case (Some(loaderO), Some(removalO)) => builder.removalListener(removalO).build(loaderO)
-      case (Some(loaderO), None)           => builder.build(loaderO)
-      case (None, Some(removalO))          => builder.removalListener(removalO).build()
-      case _                               => builder.build()
+      case (Some(loaderO), Some(removalO)) =>
+        builder.removalListener(removalO).build(loaderO)
+      case (Some(loaderO), None)  => builder.build(loaderO)
+      case (None, Some(removalO)) => builder.removalListener(removalO).build()
+      case _                      => builder.build()
     }
   }
 
@@ -74,14 +83,15 @@ class LruMap[K, V](
    * @param key Key to put the Value for
    * @param value Value to put for the Key
    */
-  def put(key: K, value: V): Unit = cache.put(KeyHolder(key), ValueHolder(value))
+  def put(key: K, value: V): Unit =
+    cache.put(KeyHolder(key), ValueHolder(value))
 
   /**
    * Gets a value associated with the given key.
    * @param key Key to get the Value for
    */
-
-  def get(key: K): Option[V] = Option(cache.getIfPresent(KeyHolder(key))).map(_.value)
+  def get(key: K): Option[V] =
+    Option(cache.getIfPresent(KeyHolder(key))).map(_.value)
 
   /**
    * Get the value associated with the given key. If no value is already associated, then associate the given value
@@ -92,9 +102,11 @@ class LruMap[K, V](
    * @return
    */
   def getOrElseUpdate(key: K, value: => V): V = {
-    cache.get(KeyHolder(key), new Callable[ValueHolder[V]] {
-      def call(): ValueHolder[V] = ValueHolder(value)
-    }).value
+    cache
+      .get(KeyHolder(key), new Callable[ValueHolder[V]] {
+        def call(): ValueHolder[V] = ValueHolder(value)
+      })
+      .value
   }
 
   /**
@@ -103,4 +115,3 @@ class LruMap[K, V](
    */
   def remove(key: K): Unit = cache.invalidate(KeyHolder(key))
 }
-

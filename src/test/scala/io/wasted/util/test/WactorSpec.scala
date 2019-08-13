@@ -39,4 +39,3 @@ class WactorSpec extends WordSpec with AsyncAssertions with BeforeAndAfter {
 
   after(actor ! Wactor.Die)
 }
-

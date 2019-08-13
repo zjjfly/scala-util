@@ -10,7 +10,12 @@ import com.twitter.util._
 import io.netty.buffer.ByteBuf
 import io.netty.channel._
 import io.netty.handler.codec.http._
-import io.netty.handler.codec.http.websocketx.{ BinaryWebSocketFrame, WebSocketClientHandshakerFactory, WebSocketFrame, WebSocketVersion }
+import io.netty.handler.codec.http.websocketx.{
+  BinaryWebSocketFrame,
+  WebSocketClientHandshakerFactory,
+  WebSocketFrame,
+  WebSocketVersion
+}
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.ssl.{ SslContext, SslContextBuilder }
 import io.netty.handler.timeout.{ ReadTimeoutHandler, WriteTimeoutHandler }
@@ -21,24 +26,34 @@ import io.netty.handler.timeout.{ ReadTimeoutHandler, WriteTimeoutHandler }
  * @param in Inbound Offer
  * @param channel Netty Channel
  */
-final case class NettyWebSocketChannel(out: Broker[WebSocketFrame], in: Offer[WebSocketFrame], private val channel: Channel) {
+final case class NettyWebSocketChannel(
+    out:                 Broker[WebSocketFrame],
+    in:                  Offer[WebSocketFrame],
+    private val channel: Channel) {
   def close(): Future[Unit] = {
     val closed = Promise[Unit]()
-    channel.closeFuture().addListener(new ChannelFutureListener {
-      override def operationComplete(f: ChannelFuture): Unit = {
-        closed.setDone()
-      }
-    })
+    channel
+      .closeFuture()
+      .addListener(new ChannelFutureListener {
+        override def operationComplete(f: ChannelFuture): Unit = {
+          closed.setDone()
+        }
+      })
     closed.raiseWithin(Duration(2, TimeUnit.SECONDS))(WheelTimer.twitter)
   }
 
   val onDisconnect = Promise[Unit]()
-  channel.closeFuture().addListener(new ChannelFutureListener {
-    override def operationComplete(f: ChannelFuture): Unit = onDisconnect.setDone()
-  })
+  channel
+    .closeFuture()
+    .addListener(new ChannelFutureListener {
+      override def operationComplete(f: ChannelFuture): Unit =
+        onDisconnect.setDone()
+    })
 
   def !(s: ByteBuf): Unit = out ! new BinaryWebSocketFrame(s)
-  def !(s: Array[Byte]): Unit = out ! new BinaryWebSocketFrame(channel.alloc().buffer(s.length).writeBytes(s))
+  def !(s: Array[Byte]): Unit =
+    out ! new BinaryWebSocketFrame(
+      channel.alloc().buffer(s.length).writeBytes(s))
   def !(s: WebSocketFrame): Unit = out ! s
   def foreach(run: WebSocketFrame => Unit) = in.foreach(run)
 }
@@ -78,19 +93,28 @@ final case class NettyWebSocketCodec(
     sslCtx:               Option[SslContext] = None)
   extends NettyCodec[java.net.URI, NettyWebSocketChannel] {
 
-  def withCompression(compressionLevel: Int) = copy(compressionLevel = compressionLevel)
-  def withDecompression(decompression: Boolean) = copy(decompression = decompression)
-  def withMaxRequestSize(maxRequestSize: StorageUnit) = copy(maxRequestSize = maxRequestSize)
-  def withMaxResponseSize(maxResponseSize: StorageUnit) = copy(maxResponseSize = maxResponseSize)
-  def withMaxInitialLineLength(maxInitialLineLength: StorageUnit) = copy(maxInitialLineLength = maxInitialLineLength)
-  def withMaxHeaderSize(maxHeaderSize: StorageUnit) = copy(maxHeaderSize = maxHeaderSize)
+  def withCompression(compressionLevel: Int) =
+    copy(compressionLevel = compressionLevel)
+  def withDecompression(decompression: Boolean) =
+    copy(decompression = decompression)
+  def withMaxRequestSize(maxRequestSize: StorageUnit) =
+    copy(maxRequestSize = maxRequestSize)
+  def withMaxResponseSize(maxResponseSize: StorageUnit) =
+    copy(maxResponseSize = maxResponseSize)
+  def withMaxInitialLineLength(maxInitialLineLength: StorageUnit) =
+    copy(maxInitialLineLength = maxInitialLineLength)
+  def withMaxHeaderSize(maxHeaderSize: StorageUnit) =
+    copy(maxHeaderSize = maxHeaderSize)
   def withTls(sslCtx: SslContext) = copy(sslCtx = Some(sslCtx))
   def withKeepAlive(keepAlive: Boolean) = copy(keepAlive = keepAlive)
   def withReadTimeout(timeout: Duration) = copy(readTimeout = Some(timeout))
   def withWriteTimeout(timeout: Duration) = copy(writeTimeout = Some(timeout))
 
   def withInsecureTls() = {
-    val ctx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build()
+    val ctx = SslContextBuilder
+      .forClient()
+      .trustManager(InsecureTrustManagerFactory.INSTANCE)
+      .build()
     copy(sslCtx = Some(ctx))
   }
 
@@ -100,12 +124,20 @@ final case class NettyWebSocketCodec(
    */
   def serverPipeline(channel: Channel): Unit = {
     val p = channel.pipeline()
-    sslCtx.foreach(e => p.addLast(HttpServer.Handlers.ssl, e.newHandler(channel.alloc())))
+    sslCtx.foreach(e =>
+      p.addLast(HttpServer.Handlers.ssl, e.newHandler(channel.alloc())))
     val maxInitialBytes = maxInitialLineLength.inBytes.toInt
     val maxHeaderBytes = maxHeaderSize.inBytes.toInt
-    p.addLast(HttpServer.Handlers.codec, new HttpServerCodec(maxInitialBytes, maxHeaderBytes, maxChunkSize.inBytes.toInt))
+    p.addLast(
+      HttpServer.Handlers.codec,
+      new HttpServerCodec(
+        maxInitialBytes,
+        maxHeaderBytes,
+        maxChunkSize.inBytes.toInt))
     if (compressionLevel > 0) {
-      p.addLast(HttpServer.Handlers.compressor, new HttpContentCompressor(compressionLevel))
+      p.addLast(
+        HttpServer.Handlers.compressor,
+        new HttpContentCompressor(compressionLevel))
     }
   }
 
@@ -115,15 +147,22 @@ final case class NettyWebSocketCodec(
    */
   def clientPipeline(channel: Channel): Unit = {
     val pipeline = channel.pipeline()
-    sslCtx.foreach(e => pipeline.addLast(HttpServer.Handlers.ssl, e.newHandler(channel.alloc())))
+    sslCtx.foreach(e =>
+      pipeline.addLast(HttpServer.Handlers.ssl, e.newHandler(channel.alloc())))
     val maxInitialBytes = this.maxInitialLineLength.inBytes.toInt
     val maxHeaderBytes = this.maxHeaderSize.inBytes.toInt
     val maxChunkSize = this.maxChunkSize.inBytes.toInt
-    pipeline.addLast(HttpClient.Handlers.codec, new HttpClientCodec(maxInitialBytes, maxHeaderBytes, maxChunkSize))
+    pipeline.addLast(
+      HttpClient.Handlers.codec,
+      new HttpClientCodec(maxInitialBytes, maxHeaderBytes, maxChunkSize))
     if (decompression) {
-      pipeline.addLast(HttpClient.Handlers.decompressor, new HttpContentDecompressor())
+      pipeline.addLast(
+        HttpClient.Handlers.decompressor,
+        new HttpContentDecompressor())
     }
-    pipeline.addLast(HttpClient.Handlers.aggregator, new HttpObjectAggregator(maxChunkSize))
+    pipeline.addLast(
+      HttpClient.Handlers.aggregator,
+      new HttpObjectAggregator(maxChunkSize))
   }
 
   /**
@@ -132,56 +171,85 @@ final case class NettyWebSocketCodec(
    * @param uri URI We want to use
    * @return
    */
-  def clientConnected(channel: Channel, uri: java.net.URI): Future[NettyWebSocketChannel] = {
+  def clientConnected(
+    channel: Channel,
+    uri:     java.net.URI): Future[NettyWebSocketChannel] = {
     val inBroker = new Broker[WebSocketFrame]
     val outBroker = new Broker[WebSocketFrame]
     val result = Promise[NettyWebSocketChannel]
 
     readTimeout.foreach { readTimeout =>
-      channel.pipeline.addFirst(HttpClient.Handlers.readTimeout, new ReadTimeoutHandler(readTimeout.inMillis.toInt) {
-        override def readTimedOut(ctx: ChannelHandlerContext) {
-          ctx.channel.close
-          if (!result.isDefined) result.setException(new IllegalStateException("Read timed out"))
+      channel.pipeline.addFirst(
+        HttpClient.Handlers.readTimeout,
+        new ReadTimeoutHandler(readTimeout.inMillis.toInt) {
+          override def readTimedOut(ctx: ChannelHandlerContext) {
+            ctx.channel.close
+            if (!result.isDefined)
+              result.setException(new IllegalStateException("Read timed out"))
+          }
         }
-      })
+      )
     }
     writeTimeout.foreach { writeTimeout =>
-      channel.pipeline.addFirst(HttpClient.Handlers.writeTimeout, new WriteTimeoutHandler(writeTimeout.inMillis.toInt) {
-        override def writeTimedOut(ctx: ChannelHandlerContext) {
-          ctx.channel.close
-          if (!result.isDefined) result.setException(new IllegalStateException("Write timed out"))
+      channel.pipeline.addFirst(
+        HttpClient.Handlers.writeTimeout,
+        new WriteTimeoutHandler(writeTimeout.inMillis.toInt) {
+          override def writeTimedOut(ctx: ChannelHandlerContext) {
+            ctx.channel.close
+            if (!result.isDefined)
+              result.setException(new IllegalStateException("Write timed out"))
+          }
         }
-      })
+      )
     }
 
     val headers = new DefaultHttpHeaders()
     val handshaker = WebSocketClientHandshakerFactory.newHandshaker(
-      uri, WebSocketVersion.V13, subprotocols, allowExtensions, headers)
+      uri,
+      WebSocketVersion.V13,
+      subprotocols,
+      allowExtensions,
+      headers)
 
-    channel.pipeline().addLast(new SimpleChannelInboundHandler[FullHttpResponse] {
-      override def channelRead0(ctx: ChannelHandlerContext, msg: FullHttpResponse) {
-        if (!handshaker.isHandshakeComplete) {
-          handshaker.finishHandshake(ctx.channel(), msg)
-          ctx.channel().pipeline().remove(this)
-        } else ctx.channel().close() // this should not happen
-      }
+    channel
+      .pipeline()
+      .addLast(new SimpleChannelInboundHandler[FullHttpResponse] {
+        override def channelRead0(
+          ctx: ChannelHandlerContext,
+          msg: FullHttpResponse) {
+          if (!handshaker.isHandshakeComplete) {
+            handshaker.finishHandshake(ctx.channel(), msg)
+            ctx.channel().pipeline().remove(this)
+          } else ctx.channel().close() // this should not happen
+        }
 
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable) {
-        if (!result.isDefined) result.setException(cause)
-        ctx.close()
-      }
-    })
+        override def exceptionCaught(
+          ctx:   ChannelHandlerContext,
+          cause: Throwable) {
+          if (!result.isDefined) result.setException(cause)
+          ctx.close()
+        }
+      })
 
-    channel.pipeline().addLast(HttpClient.Handlers.handler, new SimpleChannelInboundHandler[WebSocketFrame] {
-      override def exceptionCaught(ctx: ChannelHandlerContext, cause: Throwable): Unit = {
-        if (!result.isDefined) result.setException(cause)
-      }
+    channel
+      .pipeline()
+      .addLast(
+        HttpClient.Handlers.handler,
+        new SimpleChannelInboundHandler[WebSocketFrame] {
+          override def exceptionCaught(
+            ctx:   ChannelHandlerContext,
+            cause: Throwable): Unit = {
+            if (!result.isDefined) result.setException(cause)
+          }
 
-      override def channelRead0(ctx: ChannelHandlerContext, msg: WebSocketFrame): Unit = {
-        // we wire the inbound packet to the Broker
-        inBroker ! msg.retain()
-      }
-    })
+          override def channelRead0(
+            ctx: ChannelHandlerContext,
+            msg: WebSocketFrame): Unit = {
+            // we wire the inbound packet to the Broker
+            inBroker ! msg.retain()
+          }
+        }
+      )
 
     val promise = channel.newPromise()
     handshaker.handshake(channel, promise)
@@ -189,12 +257,17 @@ final case class NettyWebSocketCodec(
       override def operationComplete(f: ChannelFuture): Unit = {
         // don't overflow the server immediately after handshake
         implicit val timer = WheelTimer
-        Schedule(() => {
-          // we wire the outbound broker to send to the channel
-          outBroker.recv.foreach(buf => channel.writeAndFlush(buf))
-          // return the future
-          if (!result.isDefined) result.setValue(NettyWebSocketChannel(outBroker, inBroker.recv, channel))
-        }, 100.millis)
+        Schedule(
+          () => {
+            // we wire the outbound broker to send to the channel
+            outBroker.recv.foreach(buf => channel.writeAndFlush(buf))
+            // return the future
+            if (!result.isDefined)
+              result.setValue(
+                NettyWebSocketChannel(outBroker, inBroker.recv, channel))
+          },
+          100.millis
+        )
       }
     })
 
